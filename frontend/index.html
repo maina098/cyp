@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jumuiya System</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <div class="brand-wrap">
+          <div class="brand-mark">J</div>
+          <div>
+            <p class="eyebrow">Coastal Economic Bloc</p>
+            <h1>Jumuiya System</h1>
+          </div>
+        </div>
+        <nav class="nav">
+          <a href="#home">Home</a>
+          <a href="#about">About</a>
+          <a href="#resources">Resources</a>
+          <a href="#news">News</a>
+          <a href="#events">Events</a>
+          <a href="#contact">Contact</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container page-shell">
+      <section id="home" class="hero panel">
+        <div>
+          <p class="tag">Legacy system redesign</p>
+          <h2>Frontend + backend architecture for the public portal</h2>
+          <p>
+            This redesign preserves the legacy website’s public-facing features while separating
+            the presentation layer from the API and content services.
+          </p>
+          <div class="cta-row">
+            <a class="primary" href="#about">Explore system</a>
+            <a class="secondary" href="#contact">Partner with us</a>
+          </div>
+        </div>
+        <div class="status-card">
+          <h3>System status</h3>
+          <div class="status-row"><span>Frontend</span><strong>Online</strong></div>
+          <div class="status-row"><span>Backend</span><strong>Online</strong></div>
+          <div class="status-row"><span>Database</span><strong>SQLite / Prisma</strong></div>
+        </div>
+      </section>
+
+      <section id="about" class="feature-grid">
+        <article class="panel">
+          <p class="section-label">About</p>
+          <h3>Institution overview</h3>
+          <p>Profiles for Jumuiya, mandate, stakeholders, governance, and strategic initiatives.</p>
+        </article>
+        <article class="panel">
+          <p class="section-label">Resources</p>
+          <h3>Blueprints and documents</h3>
+          <p>Published reports, strategic plans, and provincial policy resources for public access.</p>
+        </article>
+        <article class="panel">
+          <p class="section-label">Media</p>
+          <h3>News and updates</h3>
+          <p>Content pipelines for public announcements, articles, and archived newsletters.</p>
+        </article>
+      </section>
+
+      <section id="content-preview" class="panel data-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-label">System overview</p>
+            <h3>Mapped legacy features</h3>
+          </div>
+        </div>
+        <div id="featureList" class="card-list"></div>
+      </section>
+
+      <section id="news" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="section-label">News</p>
+            <h3>Latest updates</h3>
+          </div>
+        </div>
+        <div class="news-grid">
+          <article>
+            <span>Press release</span>
+            <h4>Coastal development summit</h4>
+            <p>Regional leaders align on infrastructure and trade priorities for the bloc.</p>
+          </article>
+          <article>
+            <span>Project</span>
+            <h4>Blue economy roadmap</h4>
+            <p>New policy actions to strengthen marine resilience and entrepreneurship.</p>
+          </article>
+          <article>
+            <span>General</span>
+            <h4>Partnership expansion</h4>
+            <p>Collaboration efforts continue across member counties and strategic stakeholders.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="events" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Events</p>
+            <h3>Upcoming and active programs</h3>
+          </div>
+        </div>
+        <ul class="event-list">
+          <li><strong>CYP Elections</strong><span>23 Aug 2026</span></li>
+          <li><strong>CYP INAGURATION</strong><span>30 Aug 2026</span></li>
+          <li><strong>CYP DELIBERATIONS RETREAT</strong><span>5 Sep 2026</span></li>
+        </ul>
+      </section>
+
+      <section id="contact" class="panel contact-panel">
+        <div>
+          <p class="section-label">Contact</p>
+          <h3>Reach the secretariat</h3>
+          <p>Email: Coastalyouthparliament@gmail.com</p>
+          <p>Phone: +254 712 511773</p>
+        </div>
+        <form class="contact-form">
+          <input type="text" placeholder="Your name" />
+          <input type="email" placeholder="Email address" />
+          <textarea placeholder="Your message"></textarea>
+          <button type="button">Send message</button>
+        </form>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

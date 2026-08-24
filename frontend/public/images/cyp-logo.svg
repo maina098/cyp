@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Coastal Youth Parliament</title>
+  <desc id="desc">Circular Coastal Youth Parliament emblem with sun, speakers, and waves</desc>
+  <circle cx="256" cy="256" r="246" fill="#fff" stroke="#07344f" stroke-width="8"/>
+  <circle cx="256" cy="256" r="226" fill="none" stroke="#e5ae45" stroke-width="3"/>
+  <circle cx="256" cy="256" r="176" fill="#f2f8fb" stroke="#07344f" stroke-width="4"/>
+  <g fill="#07344f" font-family="Georgia,serif" font-size="31" font-weight="700" text-anchor="middle" letter-spacing="3">
+    <text x="256" y="83">COASTAL YOUTH PARLIAMENT</text>
+  </g>
+  <g stroke="#e5a83b" stroke-width="8" stroke-linecap="round">
+    <path d="M256 125v-25"/><path d="m205 137-10-23"/><path d="m307 137 10-23"/><path d="m164 166-19-18"/><path d="m348 166 19-18"/><path d="m138 207-23-10"/><path d="m374 207 23-10"/>
+  </g>
+  <circle cx="256" cy="209" r="42" fill="#f5bd3e"/>
+  <g fill="none" stroke="#07344f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="239" cy="198" r="10" fill="#07344f"/><path d="M239 210v25m0-16-11 11m11-11 10 8"/>
+    <circle cx="274" cy="198" r="10" fill="#07344f"/><path d="M274 210v25m0-16-10 11m10-11 12 8"/>
+    <path d="M221 233h70l-8 31h-54z" fill="#fff"/>
+  </g>
+  <path d="M82 302c58 12 83 50 139 37 47-11 73-47 125-37 40 7 57 31 84 34v67H82z" fill="#147285"/>
+  <path d="M82 331c57 13 85 48 139 35 49-12 75-43 125-33 39 8 58 30 84 33v53H82z" fill="#159bb0"/>
+  <path d="M82 373c57 11 85 36 139 27 51-9 75-29 125-19 40 8 58 22 84 25v35H82z" fill="#45bfd0"/>
+  <g fill="#0b6377" font-family="Georgia,serif" font-size="23" font-weight="700" text-anchor="middle" letter-spacing="2">
+    <text x="256" y="464">UNITY • VOICE • PROGRESS</text>
+  </g>
+</svg>
