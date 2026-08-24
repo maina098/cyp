@@ -13,10 +13,14 @@ import { JwtService } from '@nestjs/jwt';
 import { WsJwtGuard } from '../common/guards/ws-jwt.guard';
 
 const MAX_CONNECTIONS = 1000;
+const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:3000,http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 @WebSocketGateway({
   cors: { 
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000', 
+    origin: allowedOrigins,
     credentials: true 
   },
   namespace: '/results',

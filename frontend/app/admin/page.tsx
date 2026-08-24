@@ -15,8 +15,7 @@ import {
   persistBlogPosts,
   persistMembers,
 } from '@/lib/content-store'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+import { API_BASE } from '@/lib/api-base'
 
 type ElectionRecord = {
   id: string

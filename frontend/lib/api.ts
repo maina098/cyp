@@ -1,4 +1,4 @@
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+import { API_BASE } from './api-base';
 
 async function parseJsonResponse<T>(response: Response): Promise<T | null> {
   try {

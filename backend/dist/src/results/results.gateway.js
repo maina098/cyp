@@ -19,6 +19,10 @@ const socket_io_1 = require("socket.io");
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const MAX_CONNECTIONS = 1000;
+const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:3000,http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 let ResultsGateway = ResultsGateway_1 = class ResultsGateway {
     jwtService;
     server;
@@ -252,7 +256,7 @@ __decorate([
 exports.ResultsGateway = ResultsGateway = ResultsGateway_1 = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {
-            origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+            origin: allowedOrigins,
             credentials: true
         },
         namespace: '/results',

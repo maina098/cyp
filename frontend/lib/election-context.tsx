@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { API_BASE, WS_BASE } from './api-base';
 
 export interface Election {
   id: string;
@@ -67,14 +68,12 @@ export const ElectionContextProvider: React.FC<{ children: React.ReactNode }> = 
   const [isConnected, setIsConnected] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
   // Initialize WebSocket connection
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const newSocket = io(`${API_BASE.replace('http', 'ws')}/results`, {
+    const newSocket = io(`${WS_BASE}/results`, {
       auth: { token },
       reconnection: true,
       reconnectionDelay: 1000,

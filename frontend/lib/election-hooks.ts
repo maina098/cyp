@@ -1,7 +1,6 @@
 import { useElectionContext } from './election-context';
 import { useCallback, useEffect, useState } from 'react';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { API_BASE } from './api-base';
 
 export const useElections = () => {
   const { elections, loading, fetchElections } = useElectionContext();

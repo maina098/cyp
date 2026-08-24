@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAllApplications, ElectionApplication } from '@/lib/api';
+import { WS_BASE } from '@/lib/api-base';
 import { io, Socket } from 'socket.io-client';
 
 export function useAdminApplications(electionId?: string, positionId?: string) {
@@ -32,8 +33,7 @@ export function useAdminApplications(electionId?: string, positionId?: string) {
   useEffect(() => {
     if (!electionId) return;
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-    const newSocket = io(`${API_BASE}/results`, {
+    const newSocket = io(`${WS_BASE}/results`, {
       transports: ['websocket'],
       autoConnect: true,
     });
