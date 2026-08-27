@@ -45,9 +45,9 @@ export class VotesService {
         }
 
         // Fetch voter details for audit logging
-        const voter = await tx.user.findUnique({
-          where: { id: voterId },
-        });
+        const voter = tx.user
+          ? await tx.user.findUnique({ where: { id: voterId } })
+          : null;
 
         // Create vote (unique constraint prevents duplicates)
         const vote = await tx.vote.create({

@@ -5,17 +5,17 @@ import { useRouter } from 'next/navigation'
 import './admin.css'
 import {
   BlogPost,
-  MemberApplication,
   MemberRecord,
   createBlogPost,
-  getStoredApplications,
   getStoredBlogPosts,
   getStoredMembers,
-  persistApplications,
   persistBlogPosts,
   persistMembers,
 } from '@/lib/content-store'
 import { API_BASE } from '@/lib/api-base'
+import { WS_BASE } from '@/lib/api-base'
+import { io } from 'socket.io-client'
+import { AdminEvent, AdminResource, ElectionApplication, approveElectionApplication, createAdminEvent, createAdminResource, deleteAdminEvent, deleteAdminResource, getAdminApplications, getAdminEvents, getAdminResources, getElections, getSystemHealth, rejectElectionApplication, updateApplicationStatus as updateElectionApplicationStatus, uploadAdminResource } from '@/lib/api'
 
 type ElectionRecord = {
   id: string
@@ -43,9 +43,14 @@ export default function AdminDashboard() {
   const [activeMenu, setActiveMenu] = useState('dashboard')
   const [loading, setLoading] = useState(true)
   const [members, setMembers] = useState<MemberRecord[]>([])
-  const [applications, setApplications] = useState<MemberApplication[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [elections, setElections] = useState<ElectionRecord[]>([])
+  const [liveApplications, setLiveApplications] = useState<ElectionApplication[]>([])
+  const [events, setEvents] = useState<AdminEvent[]>([])
+  const [resources, setResources] = useState<AdminResource[]>([])
+  const [health, setHealth] = useState<{ ok: boolean; data: any } | null>(null)
+  const [eventForm, setEventForm] = useState({ title: '', description: '', location: '', date: '', status: 'UPCOMING' })
+  const [resourceForm, setResourceForm] = useState({ title: '', description: '', file: null as File | null, category: 'Reports' })
   const [selectedElectionId, setSelectedElectionId] = useState<string>('')
   const [electionStatus, setElectionStatus] = useState<ElectionStatus>('open')
   const [blogForm, setBlogForm] = useState({
@@ -79,28 +84,58 @@ export default function AdminDashboard() {
       }
     }
 
-    const loadElections = async () => {
+    const loadLiveData = async () => {
       try {
-        const response = await fetch(`${API_BASE}/elections`, { headers: { Authorization: `Bearer ${token}` } })
-        if (response.ok) {
-          const data = await response.json()
-          setElections(Array.isArray(data) ? data : [])
-          if (Array.isArray(data) && data[0]) {
-            setSelectedElectionId(data[0].id)
-            setElectionStatus(data[0].status === 'active' ? 'open' : data[0].status === 'closed' ? 'closed' : 'draft')
-          }
+        const [electionResult, applicationResult, eventResult, resourceResult, healthResult] = await Promise.allSettled([
+          getElections(), getAdminApplications(token), getAdminEvents(token), getAdminResources(token), getSystemHealth(),
+        ])
+        const electionData = electionResult.status === 'fulfilled' ? electionResult.value : []
+        const applicationData = applicationResult.status === 'fulfilled' ? applicationResult.value : []
+        const eventData = eventResult.status === 'fulfilled' ? eventResult.value : []
+        const resourceData = resourceResult.status === 'fulfilled' ? resourceResult.value : []
+        const healthData = healthResult.status === 'fulfilled' ? healthResult.value : { ok: false, data: null }
+        setElections(electionData as ElectionRecord[])
+        setLiveApplications(applicationData)
+        setEvents(eventData)
+        setResources(resourceData)
+        setHealth(healthData)
+        if (electionData[0]) {
+          setSelectedElectionId((current) => current || electionData[0].id)
+          setElectionStatus(electionData[0].status === 'active' ? 'open' : electionData[0].status === 'closed' ? 'closed' : 'draft')
         }
       } catch {
-        // ignore admin election load errors
+        setHealth({ ok: false, data: null })
       }
     }
 
     setMembers(getStoredMembers())
-    setApplications(getStoredApplications())
     setBlogPosts(getStoredBlogPosts())
-    loadElections()
+    loadLiveData()
+    const refreshTimer = window.setInterval(loadLiveData, 15000)
     setLoading(false)
+    return () => window.clearInterval(refreshTimer)
   }, [router])
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token || !selectedElectionId) return
+    const socket = io(`${WS_BASE}/results`, { transports: ['websocket'], auth: { token } })
+    const refreshElections = () => getElections().then((data) => setElections(data as ElectionRecord[]))
+    socket.on('connect', () => {
+      socket.emit('subscribeElection', selectedElectionId)
+      socket.emit('subscribeApplications', selectedElectionId)
+    })
+    socket.on('newApplication', (payload) => {
+      if (payload?.application?.electionId === selectedElectionId) setLiveApplications((current) => [payload.application, ...current.filter((item) => item.id !== payload.application.id)])
+    })
+    socket.on('applicationStatusUpdate', (payload) => {
+      if (payload?.application) setLiveApplications((current) => current.map((item) => item.id === payload.application.id ? payload.application : item))
+    })
+    socket.on('resultsUpdate', refreshElections)
+    socket.on('voteCasted', refreshElections)
+    socket.on('statusUpdate', refreshElections)
+    return () => { socket.disconnect() }
+  }, [selectedElectionId])
 
   const memberStats = useMemo(() => ({
     total: members.length,
@@ -127,11 +162,36 @@ export default function AdminDashboard() {
     persistMembers(updatedMembers)
   }
 
-  const updateApplicationStatus = (applicationId: string, status: MemberApplication['status']) => {
-    const updatedApplications = applications.map((application) => application.id === applicationId ? { ...application, status } : application)
-    setApplications(updatedApplications)
-    persistApplications(updatedApplications)
+  const updateApplicationStatus = async (applicationId: string, status: ElectionApplication['status']) => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const application = liveApplications.find((item) => item.id === applicationId)
+    if (!application) return
+    const result = status === 'approved'
+      ? await approveElectionApplication(token, application.electionId, applicationId)
+      : status === 'rejected'
+        ? await rejectElectionApplication(token, application.electionId, applicationId)
+        : await updateElectionApplicationStatus(token, applicationId, status)
+    if (result.success && result.data) setLiveApplications((current) => current.map((item) => item.id === applicationId ? result.data! : item))
   }
+
+  const addEvent = async () => {
+    const token = localStorage.getItem('token')
+    if (!token || !eventForm.title || !eventForm.date) return
+    const created = await createAdminEvent(token, eventForm)
+    if (created) { setEvents((current) => [...current, created].sort((a, b) => a.date.localeCompare(b.date))); setEventForm({ title: '', description: '', location: '', date: '', status: 'UPCOMING' }) }
+  }
+
+  const addResource = async () => {
+    const token = localStorage.getItem('token')
+    if (!token || !resourceForm.title || !resourceForm.file) return
+    const uploaded = await uploadAdminResource(token, resourceForm.file)
+    const created = uploaded ? await createAdminResource(token, { title: resourceForm.title, description: resourceForm.description, fileUrl: uploaded.url, category: resourceForm.category }) : null
+    if (created) { setResources((current) => [created, ...current]); setResourceForm({ title: '', description: '', file: null, category: 'Reports' }) }
+  }
+
+  const removeEvent = async (id: string) => { const token = localStorage.getItem('token'); if (token && await deleteAdminEvent(token, id)) setEvents((current) => current.filter((item) => item.id !== id)) }
+  const removeResource = async (id: string) => { const token = localStorage.getItem('token'); if (token && await deleteAdminResource(token, id)) setResources((current) => current.filter((item) => item.id !== id)) }
 
   const handlePublishBlog = () => {
     if (!blogForm.title.trim() || !blogForm.content.trim()) {
@@ -161,7 +221,7 @@ export default function AdminDashboard() {
     if (!token) return
 
     try {
-      await fetch(`${API_BASE}/elections/${selectedElectionId}/status`, {
+      await fetch(`${API_BASE}/elections/${selectedElectionId}/transition-status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -249,7 +309,7 @@ export default function AdminDashboard() {
           <>
             <div className="kpi-grid">
               <div className="kpi-card"><div className="kpi-header"><span className="kpi-title">Total Members</span><div className="kpi-icon users-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div></div><div className="kpi-value">{memberStats.total}</div><div className="kpi-progress"><div className="progress-bar"><div className="progress-fill" style={{ width: '100%' }} /></div><span className="progress-label">{memberStats.active} active members</span></div></div>
-              <div className="kpi-card"><div className="kpi-header"><span className="kpi-title">Pending Applications</span><div className="kpi-icon news-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div><div className="kpi-value">{applications.filter((app) => app.status === 'pending').length}</div><div className="kpi-progress"><div className="progress-bar"><div className="progress-fill" style={{ width: '68%' }} /></div><span className="progress-label">Needs review</span></div></div>
+              <div className="kpi-card"><div className="kpi-header"><span className="kpi-title">Pending Applications</span><div className="kpi-icon news-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div><div className="kpi-value">{liveApplications.filter((app) => app.status === 'pending').length}</div><div className="kpi-progress"><div className="progress-bar"><div className="progress-fill" style={{ width: '68%' }} /></div><span className="progress-label">Live from database</span></div></div>
               <div className="kpi-card"><div className="kpi-header"><span className="kpi-title">Election Status</span><div className="kpi-icon events-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div></div><div className="kpi-value" style={{ textTransform: 'capitalize' }}>{electionStatus}</div><div className="kpi-progress"><div className="progress-bar"><div className="progress-fill" style={{ width: electionStatus === 'open' ? '92%' : electionStatus === 'draft' ? '48%' : '100%' }} /></div><span className="progress-label">{electionStatus === 'open' ? 'Voting active' : electionStatus === 'draft' ? 'Preparing cycle' : 'Closed for this cycle'}</span></div></div>
               <div className="kpi-card"><div className="kpi-header"><span className="kpi-title">Published Blog Posts</span><div className="kpi-icon resources-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div></div><div className="kpi-value">{blogPosts.length}</div><div className="kpi-progress"><div className="progress-bar"><div className="progress-fill" style={{ width: '82%' }} /></div><span className="progress-label">Synced to frontend</span></div></div>
             </div>
@@ -302,15 +362,15 @@ export default function AdminDashboard() {
 
         {activeMenu === 'applications' && (
           <div className="panel-card">
-            <div className="panel-header"><h2>Member Applications</h2><span>{applications.length} submissions</span></div>
+            <div className="panel-header"><h2>Member Applications</h2><span>{liveApplications.length} live submissions</span></div>
             <div className="application-list">
-              {applications.map((application) => (
+              {liveApplications.map((application) => (
                 <div key={application.id} className="application-card">
                   <div className="application-meta"><strong>{application.name}</strong><span>{application.email}</span></div>
-                  <p>{application.message}</p>
+                  <p>{application.description}</p>
                   <div className="application-footer">
                     <span className={`status-pill ${application.status}`}>{application.status}</span>
-                    <span>{application.submittedAt}</span>
+                    <span>{new Date(application.appliedAt).toLocaleString()}</span>
                   </div>
                   <div className="application-actions">
                     <button className="accept-btn" onClick={() => updateApplicationStatus(application.id, 'approved')}>Approve</button>
@@ -318,7 +378,48 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ))}
+              {!liveApplications.length && <p className="empty-state">No applications have been submitted.</p>}
             </div>
+          </div>
+        )}
+
+        {activeMenu === 'events' && (
+          <div className="panel-card">
+            <div className="panel-header"><h2>Upcoming Events</h2><span>{events.length} live records</span></div>
+            <div className="blog-editor">
+              <div className="field-row"><label>Title<input value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} /></label></div>
+              <div className="field-row"><label>Description<textarea value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })} rows={3} /></label></div>
+              <div className="field-row"><label>Location<input value={eventForm.location} onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })} /></label></div>
+              <div className="field-row"><label>Date and time<input type="datetime-local" value={eventForm.date} onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })} /></label></div>
+              <button className="publish-btn" onClick={addEvent}>Add event</button>
+            </div>
+            <div className="published-posts">
+              {events.map((event) => <article key={event.id} className="post-card"><div className="post-head"><strong>{event.title}</strong><span>{event.status}</span></div><p>{event.description}</p><small>{new Date(event.date).toLocaleString()} · {event.location}</small><button className="danger-btn" onClick={() => removeEvent(event.id)}>Delete event</button></article>)}
+            </div>
+          </div>
+        )}
+
+        {activeMenu === 'resources' && (
+          <div className="panel-card">
+            <div className="panel-header"><h2>Resource Library</h2><span>{resources.length} live records</span></div>
+            <div className="blog-editor">
+              <div className="field-row"><label>Title<input value={resourceForm.title} onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })} /></label></div>
+              <div className="field-row"><label>Description<textarea value={resourceForm.description} onChange={(e) => setResourceForm({ ...resourceForm, description: e.target.value })} rows={3} /></label></div>
+              <div className="field-row"><label>Category<input value={resourceForm.category} onChange={(e) => setResourceForm({ ...resourceForm, category: e.target.value })} /></label></div>
+              <div className="field-row"><label>Upload media<input type="file" accept="image/*,.pdf,.doc,.docx,.mp4" onChange={(e) => setResourceForm({ ...resourceForm, file: e.target.files?.[0] || null })} /></label></div>
+              <button className="publish-btn" onClick={addResource}>Add resource</button>
+            </div>
+            <div className="published-posts">
+              {resources.map((resource) => <article key={resource.id} className="post-card"><div className="post-head"><strong>{resource.title}</strong><span>{resource.category}</span></div><p>{resource.description || 'No description provided.'}</p><a className="text-link" href={resource.fileUrl.startsWith('http') ? resource.fileUrl : `${API_BASE}${resource.fileUrl}`} target="_blank" rel="noreferrer">Preview media</a><button className="danger-btn" onClick={() => removeResource(resource.id)}>Delete resource</button></article>)}
+            </div>
+          </div>
+        )}
+
+        {activeMenu === 'settings' && (
+          <div className="panel-card">
+            <div className="panel-header"><h2>System Settings and Health</h2><span>Checked {health ? 'just now' : 'pending'}</span></div>
+            <div className="election-status-box"><span className="status-label">API health</span><strong className="status-value">{health?.ok ? 'Healthy' : 'Unavailable'}</strong><p>{health?.ok ? 'Memory and disk probes are responding.' : 'The health endpoint could not be reached. Check the backend URL, server logs, and database connection.'}</p></div>
+            <div className="moderator-notes"><h3>Admin operations guide</h3><ul><li>Keep elections in draft until positions and candidates are ready.</li><li>Open applications before inviting members to apply.</li><li>Open voting only after approved applications have become candidates.</li><li>Use this health status and the browser network log to investigate failed API calls.</li></ul></div>
           </div>
         )}
 
@@ -380,8 +481,8 @@ export default function AdminDashboard() {
                       ?.electionResults?.slice()
                       ?.sort((a, b) => (b?.voteCount || 0) - (a?.voteCount || 0))
                       ?.map((result) => (
-                        <div key={result?.id || Math.random()} className="result-row">
-                          <span>{result?.candidate?.name || `Candidate (${result?.candidateId || 'Unknown'})`}</span>
+                        <div key={result?.id || result?.candidateId} className="result-row">
+                          <span>{result?.candidate?.name || elections.find((item) => item.id === selectedElectionId)?.candidates?.find((candidate: any) => candidate.id === result?.candidateId)?.name || `Candidate (${result?.candidateId || 'Unknown'})`}</span>
                           <strong>{result?.voteCount || 0} votes</strong>
                         </div>
                       ))
@@ -390,6 +491,8 @@ export default function AdminDashboard() {
                   )}
                 </div>
               ) : <p>No election selected.</p>}
+              <h3>Approved applicants</h3>
+              {liveApplications.filter((application) => application.electionId === selectedElectionId && application.status === 'approved').length ? liveApplications.filter((application) => application.electionId === selectedElectionId && application.status === 'approved').map((application) => <div className="result-row" key={application.id}><span>{application.name} · {application.email}</span><strong>{application.position?.title || 'Approved candidate'}</strong></div>) : <p>No approved applicants for this election.</p>}
             </div>
           </div>
         )}

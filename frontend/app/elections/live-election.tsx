@@ -192,7 +192,7 @@ export default function LiveElection({ election }: { election: ElectionDetails }
           {election.candidates.map((candidate) => {
             const candidateResult = results.find((item) => item.candidateId === candidate.id);
             const voteCount = candidateResult?.voteCount ?? 0;
-            const winnerShare = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+            const winnerShare = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
 
             return (
               <label key={candidate.id} className={`candidate-card ${selectedCandidate === candidate.id ? 'selected' : ''}`} style={{ display: 'flex', gap: 16, alignItems: 'center', padding: 16, border: '1px solid #dfe6ff', borderRadius: 16, background: selectedCandidate === candidate.id ? '#eef3ff' : '#fff' }}>
@@ -212,10 +212,10 @@ export default function LiveElection({ election }: { election: ElectionDetails }
                       <h4>{candidate.name}</h4>
                       {candidate.bio && <p>{candidate.bio}</p>}
                     </div>
-                    <strong>{voteCount} votes</strong>
+                    <strong>{voteCount} votes · {winnerShare.toFixed(2)}%</strong>
                   </div>
                   <div className="vote-bar" style={{ marginTop: 8, height: 10, background: '#edf2ff', borderRadius: 999, overflow: 'hidden' }}>
-                    <div style={{ width: `${winnerShare}%`, height: '100%', background: 'linear-gradient(90deg, #3f51b5, #7c4dff)' }} />
+                    <div style={{ width: `${winnerShare}%`, height: '100%', background: '#3f51b5' }} />
                   </div>
                 </div>
               </label>
@@ -229,6 +229,13 @@ export default function LiveElection({ election }: { election: ElectionDetails }
           <div className="summary-stat"><span>Window</span><strong>{election.status}</strong></div>
           <div className="summary-stat"><span>Starts</span><strong>{new Date(election.startsAt).toLocaleString()}</strong></div>
           <div className="summary-stat"><span>Ends</span><strong>{new Date(election.endsAt).toLocaleString()}</strong></div>
+
+          <div className="vote-breakdown" aria-label="Vote percentage breakdown">
+            <div className="vote-donut" style={{ background: `conic-gradient(${results.map((item, index) => { const start = results.slice(0, index).reduce((sum, previous) => sum + (totalVotes ? Number(previous.voteCount || 0) / totalVotes * 360 : 0), 0); const end = start + (totalVotes ? Number(item.voteCount || 0) / totalVotes * 360 : 0); return `${['#3f51b5', '#16877d', '#d97706', '#b42318'][index % 4]} ${start}deg ${end}deg`; }).join(', ') || '#edf2ff 0 360deg'})` }}>
+              <span>{totalVotes ? '100%' : '0%'}</span>
+            </div>
+            <div className="vote-legend">{election.candidates.map((candidate) => { const count = results.find((item) => item.candidateId === candidate.id)?.voteCount || 0; return <span key={candidate.id}><i />{candidate.name}: {totalVotes ? ((count / totalVotes) * 100).toFixed(2) : '0.00'}%</span> })}</div>
+          </div>
 
           <button
             type="button"

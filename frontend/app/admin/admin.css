@@ -154,6 +154,7 @@
   margin-left: 260px;
   padding: 24px 32px;
   min-height: 100vh;
+  min-width: 0;
 }
 
 /* Admin Header */
@@ -751,12 +752,44 @@
 }
 
 @media (max-width: 900px) {
-  .admin-sidebar {
-    transform: translateX(-100%);
+  .admin-layout {
+    display: block;
   }
-  
+
+  .admin-sidebar {
+    width: 100%;
+    min-width: 0;
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    transform: none;
+  }
+
+  .admin-sidebar .sidebar-brand {
+    padding: 14px 16px;
+  }
+
+  .admin-sidebar .sidebar-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 10px 12px;
+    gap: 6px;
+    scrollbar-width: thin;
+  }
+
+  .admin-sidebar .nav-link {
+    flex: 0 0 auto;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  .admin-sidebar .sidebar-footer {
+    display: none;
+  }
+
   .admin-main {
     margin-left: 0;
+    padding-top: 20px;
   }
   
   .kpi-grid,
@@ -767,9 +800,9 @@
 
 @media (max-width: 640px) {
   .admin-main {
-    padding: 16px;
+    padding: 16px 12px 28px;
   }
-  
+
   .admin-header {
     flex-direction: column;
     align-items: flex-start;
@@ -780,5 +813,38 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+  }
+
+  .header-greeting h1 {
+    font-size: 24px;
+  }
+
+  .panel-card,
+  .activity-section {
+    padding: 16px;
+  }
+
+  .kpi-card {
+    padding: 18px;
+  }
+
+  .activity-table table,
+  .table-wrap table {
+    min-width: 620px;
+  }
+
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .action-cell {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .action-cell select,
+  .action-cell button {
+    min-height: 40px;
   }
 }

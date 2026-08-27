@@ -1,4 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, Request, BadRequestException, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors, Request } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { mkdirSync } from 'fs';
+import { randomUUID } from 'crypto';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard, Roles } from '../common/guards/roles.guard';
@@ -70,6 +75,19 @@ export class AdminController {
   @Post('resources')
   createResource(@Body() data: any) {
     return this.adminService.createResource(data);
+  }
+
+  @Post('resources/upload')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: (_request, _file, callback) => { mkdirSync('./uploads/resources', { recursive: true }); callback(null, './uploads/resources'); },
+      filename: (_request, file, callback) => callback(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`),
+    }),
+    limits: { fileSize: 25 * 1024 * 1024 },
+  }))
+  uploadResource(@UploadedFile() file: { filename: string; originalname: string; mimetype: string; size: number } | undefined) {
+    if (!file) throw new BadRequestException('A resource file is required');
+    return { url: `/uploads/resources/${file.filename}`, originalName: file.originalname, mediaType: file.mimetype, size: file.size };
   }
 
   @Patch('resources/:id')

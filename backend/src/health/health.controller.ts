@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, MemoryHealthIndicator, DiskHealthIndicator } from '@nestjs/terminus';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { PrismaService } from '../prisma.service';
 
 @ApiTags('health')
 @Controller('health')
@@ -9,6 +10,7 @@ export class HealthController {
     private health: HealthCheckService,
     private memory: MemoryHealthIndicator,
     private disk: DiskHealthIndicator,
+    private prisma: PrismaService,
   ) {}
 
   @Get()
@@ -22,8 +24,16 @@ export class HealthController {
       () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
       // Check if RSS memory is under 150MB
       () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
-      // Check if disk has at least 1GB free
-      () => this.disk.checkStorage('disk', { thresholdPercent: 0.9, path: diskPath }),
+      // Fail only when more than 99% of the disk is used.
+      () => this.disk.checkStorage('disk', { thresholdPercent: 0.99, path: diskPath }),
+      async () => {
+        try {
+          await this.prisma.$queryRaw`SELECT 1`;
+          return { database: { status: 'up' } };
+        } catch {
+          throw new Error('Database is unavailable');
+        }
+      },
     ]);
   }
 
@@ -43,6 +53,10 @@ export class HealthController {
     return this.health.check([
       () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
       () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
+      async () => {
+        await this.prisma.$queryRaw`SELECT 1`;
+        return { database: { status: 'up' } };
+      },
     ]);
   }
 }

@@ -14,6 +14,11 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
+const multer_1 = require("multer");
+const path_1 = require("path");
+const fs_1 = require("fs");
+const crypto_1 = require("crypto");
 const swagger_1 = require("@nestjs/swagger");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
@@ -58,6 +63,11 @@ let AdminController = class AdminController {
     }
     createResource(data) {
         return this.adminService.createResource(data);
+    }
+    uploadResource(file) {
+        if (!file)
+            throw new common_1.BadRequestException('A resource file is required');
+        return { url: `/uploads/resources/${file.filename}`, originalName: file.originalname, mediaType: file.mimetype, size: file.size };
     }
     updateResource(id, data) {
         return this.adminService.updateResource(id, data);
@@ -187,6 +197,20 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "createResource", null);
+__decorate([
+    (0, common_1.Post)('resources/upload'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
+        storage: (0, multer_1.diskStorage)({
+            destination: (_request, _file, callback) => { (0, fs_1.mkdirSync)('./uploads/resources', { recursive: true }); callback(null, './uploads/resources'); },
+            filename: (_request, file, callback) => callback(null, `${(0, crypto_1.randomUUID)()}${(0, path_1.extname)(file.originalname).toLowerCase()}`),
+        }),
+        limits: { fileSize: 25 * 1024 * 1024 },
+    })),
+    __param(0, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "uploadResource", null);
 __decorate([
     (0, common_1.Patch)('resources/:id'),
     __param(0, (0, common_1.Param)('id')),

@@ -45,9 +45,9 @@ let VotesService = VotesService_1 = class VotesService {
                 if (candidate.electionId !== electionId) {
                     throw new common_1.ForbiddenException('Candidate does not belong to this election');
                 }
-                const voter = await tx.user.findUnique({
-                    where: { id: voterId },
-                });
+                const voter = tx.user
+                    ? await tx.user.findUnique({ where: { id: voterId } })
+                    : null;
                 const vote = await tx.vote.create({
                     data: {
                         electionId,

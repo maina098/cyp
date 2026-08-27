@@ -32,6 +32,14 @@ let ApplicationsService = ApplicationsService_1 = class ApplicationsService {
         if (position.electionId !== dto.electionId) {
             throw new common_1.BadRequestException('The position does not belong to this election');
         }
+        const election = await this.prisma.election.findUnique({ where: { id: dto.electionId } });
+        if (!election) {
+            throw new common_1.BadRequestException('Election not found');
+        }
+        const now = new Date();
+        if (!['scheduled', 'active'].includes(election.status) || now < election.startsAt || now > election.endsAt) {
+            throw new common_1.BadRequestException('Applications are not open for this election');
+        }
         if (!position.isOpen) {
             throw new common_1.BadRequestException('This position is not currently accepting applications');
         }

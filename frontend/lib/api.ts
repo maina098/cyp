@@ -27,6 +27,7 @@ export type ContentItem = {
   category?: string;
   description?: string;
   location?: string;
+  date?: string;
   fileUrl?: string;
   publishedAt?: string;
 };
@@ -221,8 +222,8 @@ export type ElectionApplication = {
 };
 
 export async function getElections(): Promise<Election[]> {
-  const data = await fetchJson<Election[]>('/elections');
-  return Array.isArray(data) ? data : [];
+  const data = await fetchJson<Election[] | { data?: Election[] }>('/elections?limit=100');
+  return Array.isArray(data) ? data : data?.data || [];
 }
 
 export async function getElectionById(id: string): Promise<Election | null> {
@@ -410,5 +411,65 @@ export async function getAllApplications(
     return response.json();
   } catch {
     return [];
+  }
+}
+
+export type AdminEvent = ContentItem & { date: string; status: string; imageUrl?: string };
+export type AdminResource = ContentItem & { fileUrl: string; downloadsCount?: number };
+
+export async function getAdminApplications(token: string, electionId?: string): Promise<ElectionApplication[]> {
+  const params = electionId ? `?electionId=${encodeURIComponent(electionId)}&limit=100` : '?limit=100';
+  return authenticatedJson<{ data?: ElectionApplication[] } | ElectionApplication[]>(token, `/admin/applications${params}`).then((data) => Array.isArray(data) ? data : data?.data || []);
+}
+
+export function approveElectionApplication(token: string, electionId: string, applicationId: string) {
+  return authenticatedJson<ElectionApplication>(token, `/elections/${electionId}/applications/${applicationId}/approve`, { method: 'POST' }).then((data) => ({ success: Boolean(data), data: data || undefined }));
+}
+
+export function rejectElectionApplication(token: string, electionId: string, applicationId: string) {
+  return authenticatedJson<ElectionApplication>(token, `/elections/${electionId}/applications/${applicationId}/reject`, { method: 'POST' }).then((data) => ({ success: Boolean(data), data: data || undefined }));
+}
+
+export function getAdminEvents(token: string) {
+  return authenticatedJson<AdminEvent[]>(token, '/admin/events').then((data) => Array.isArray(data) ? data : []);
+}
+
+export function createAdminEvent(token: string, data: { title: string; description: string; location: string; date: string; status?: string; imageUrl?: string }) {
+  return authenticatedJson<AdminEvent>(token, '/admin/events', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export function deleteAdminEvent(token: string, eventId: string) {
+  return authenticatedJson(token, `/admin/events/${eventId}`, { method: 'DELETE' });
+}
+
+export function getAdminResources(token: string) {
+  return authenticatedJson<AdminResource[]>(token, '/admin/resources').then((data) => Array.isArray(data) ? data : []);
+}
+
+export function createAdminResource(token: string, data: { title: string; description?: string; fileUrl: string; category: string }) {
+  return authenticatedJson<AdminResource>(token, '/admin/resources', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function uploadAdminResource(token: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const response = await fetch(`${API_BASE}/admin/resources/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
+    return response.ok ? response.json() as Promise<{ url: string }> : null;
+  } catch {
+    return null;
+  }
+}
+
+export function deleteAdminResource(token: string, resourceId: string) {
+  return authenticatedJson(token, `/admin/resources/${resourceId}`, { method: 'DELETE' });
+}
+
+export async function getSystemHealth() {
+  try {
+    const response = await fetch(`${API_BASE}/health`, { cache: 'no-store' });
+    return { ok: response.ok, data: await response.json().catch(() => null) };
+  } catch {
+    return { ok: false, data: null };
   }
 }

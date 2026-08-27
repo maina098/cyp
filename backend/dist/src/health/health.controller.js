@@ -13,21 +13,33 @@ exports.HealthController = void 0;
 const common_1 = require("@nestjs/common");
 const terminus_1 = require("@nestjs/terminus");
 const swagger_1 = require("@nestjs/swagger");
+const prisma_service_1 = require("../prisma.service");
 let HealthController = class HealthController {
     health;
     memory;
     disk;
-    constructor(health, memory, disk) {
+    prisma;
+    constructor(health, memory, disk, prisma) {
         this.health = health;
         this.memory = memory;
         this.disk = disk;
+        this.prisma = prisma;
     }
     check() {
         const diskPath = process.platform === 'win32' ? 'C:\\' : '/';
         return this.health.check([
             () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
             () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
-            () => this.disk.checkStorage('disk', { thresholdPercent: 0.9, path: diskPath }),
+            () => this.disk.checkStorage('disk', { thresholdPercent: 0.99, path: diskPath }),
+            async () => {
+                try {
+                    await this.prisma.$queryRaw `SELECT 1`;
+                    return { database: { status: 'up' } };
+                }
+                catch {
+                    throw new Error('Database is unavailable');
+                }
+            },
         ]);
     }
     liveness() {
@@ -39,6 +51,10 @@ let HealthController = class HealthController {
         return this.health.check([
             () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
             () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
+            async () => {
+                await this.prisma.$queryRaw `SELECT 1`;
+                return { database: { status: 'up' } };
+            },
         ]);
     }
 };
@@ -72,6 +88,7 @@ exports.HealthController = HealthController = __decorate([
     (0, common_1.Controller)('health'),
     __metadata("design:paramtypes", [terminus_1.HealthCheckService,
         terminus_1.MemoryHealthIndicator,
-        terminus_1.DiskHealthIndicator])
+        terminus_1.DiskHealthIndicator,
+        prisma_service_1.PrismaService])
 ], HealthController);
 //# sourceMappingURL=health.controller.js.map

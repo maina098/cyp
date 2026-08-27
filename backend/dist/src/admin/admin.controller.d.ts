@@ -174,6 +174,17 @@ export declare class AdminController {
         fileUrl: string;
         downloadsCount: number;
     }>;
+    uploadResource(file: {
+        filename: string;
+        originalname: string;
+        mimetype: string;
+        size: number;
+    } | undefined): {
+        url: string;
+        originalName: string;
+        mediaType: string;
+        size: number;
+    };
     updateResource(id: string, data: any): Promise<{
         id: string;
         createdAt: Date;
