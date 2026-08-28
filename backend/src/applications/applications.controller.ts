@@ -13,6 +13,7 @@ import {
 import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto, UpdateApplicationStatusDto } from './applications.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard, Roles } from '../common/guards/roles.guard';
 
 @Controller('applications')
 export class ApplicationsController {
@@ -40,7 +41,8 @@ export class ApplicationsController {
    * GET /applications - Get all applications (admin) with optional filters
    */
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async getAll(@Query() filters: any) {
     return this.applicationsService.findAll({
       electionId: filters.electionId,

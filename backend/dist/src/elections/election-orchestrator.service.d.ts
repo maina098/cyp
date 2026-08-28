@@ -11,7 +11,27 @@ export declare class ElectionOrchestratorService {
     private prisma;
     private resultsGateway;
     constructor(prisma: PrismaService, resultsGateway: ResultsGateway);
-    initializeElectionWithPositions(electionId: string, userId: string): Promise<({
+    addCandidate(electionId: string, data: {
+        name: string;
+        bio?: string;
+        photoUrl?: string;
+        position?: number;
+        positionId?: string;
+    }, userId: string, userRole?: string): Promise<{
+        id: string;
+        name: string;
+        bio: string | null;
+        createdAt: Date;
+        electionId: string;
+        positionId: string | null;
+        position: number;
+        photoUrl: string | null;
+    }>;
+    removeCandidate(electionId: string, candidateId: string, userId: string, userRole?: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    initializeElectionWithPositions(electionId: string, userId: string, userRole?: string): Promise<({
         positions: {
             id: string;
             createdAt: Date;
@@ -33,13 +53,14 @@ export declare class ElectionOrchestratorService {
         endsAt: Date;
         createdBy: string;
     }) | null>;
-    transitionElectionStatus(electionId: string, newStatus: 'draft' | 'scheduled' | 'active' | 'closed', userId: string): Promise<{
+    transitionElectionStatus(electionId: string, newStatus: 'draft' | 'scheduled' | 'active' | 'closed', userId: string, userRole?: string): Promise<{
         candidates: {
             id: string;
             name: string;
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -71,7 +92,7 @@ export declare class ElectionOrchestratorService {
         endsAt: Date;
         createdBy: string;
     }>;
-    openPositionsForApplications(electionId: string, positionIds: string[], userId: string): Promise<{
+    openPositionsForApplications(electionId: string, positionIds: string[], userId: string, userRole?: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -81,7 +102,7 @@ export declare class ElectionOrchestratorService {
         isOpen: boolean;
         maxApplicants: number;
     }[]>;
-    closePositionsForApplications(electionId: string, positionIds: string[], userId: string): Promise<{
+    closePositionsForApplications(electionId: string, positionIds: string[], userId: string, userRole?: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -172,7 +193,7 @@ export declare class ElectionOrchestratorService {
         changeChampion: string | null;
         appliedAt: Date;
     })[]>;
-    approveApplicationAndCreateCandidate(applicationId: string, userId: string): Promise<{
+    approveApplicationAndCreateCandidate(applicationId: string, userId: string, userRole?: string): Promise<{
         application: {
             election: {
                 id: string;
@@ -219,11 +240,12 @@ export declare class ElectionOrchestratorService {
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         };
     }>;
-    rejectApplication(applicationId: string, userId: string): Promise<{
+    rejectApplication(applicationId: string, userId: string, userRole?: string): Promise<{
         position: {
             id: string;
             createdAt: Date;

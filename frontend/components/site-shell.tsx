@@ -264,10 +264,9 @@ export function SiteShell({ children, eyebrow, title, intro, showTopBar = true, 
         <div className="container footer-bottom">
           <p>© 2026 Coastal Youth Parliament. All rights reserved.</p>
           <div className="legal-links">
-            <a href="/">Terms</a>
-            <a href="/">Privacy</a>
-            <a href="/">License</a>
-            <a href="/">Policy</a>
+            <Link href="/terms-of-service">Terms</Link>
+            <Link href="/privacy-policy">Privacy</Link>
+            <Link href="/faq">FAQ</Link>
           </div>
         </div>
       </footer>

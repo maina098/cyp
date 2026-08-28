@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -23,7 +24,7 @@ export class ElectionOrchestratorController {
   @Post(':id/initialize')
   @UseGuards(JwtAuthGuard)
   initializeElection(@Param('id') electionId: string, @Request() req) {
-    return this.orchestrator.initializeElectionWithPositions(electionId, req.user.id);
+    return this.orchestrator.initializeElectionWithPositions(electionId, req.user.id, req.user.role);
   }
 
   /**
@@ -41,7 +42,28 @@ export class ElectionOrchestratorController {
       electionId,
       body.status,
       req.user.id,
+      req.user.role,
     );
+  }
+
+  @Post(':id/candidates')
+  @UseGuards(JwtAuthGuard)
+  addCandidate(
+    @Param('id') electionId: string,
+    @Body() body: { name: string; bio?: string; photoUrl?: string; position?: number; positionId?: string },
+    @Request() req,
+  ) {
+    return this.orchestrator.addCandidate(electionId, body, req.user.id, req.user.role);
+  }
+
+  @Delete(':id/candidates/:candidateId')
+  @UseGuards(JwtAuthGuard)
+  removeCandidate(
+    @Param('id') electionId: string,
+    @Param('candidateId') candidateId: string,
+    @Request() req,
+  ) {
+    return this.orchestrator.removeCandidate(electionId, candidateId, req.user.id, req.user.role);
   }
 
   /**
@@ -59,6 +81,7 @@ export class ElectionOrchestratorController {
       electionId,
       body.positionIds,
       req.user.id,
+      req.user.role,
     );
   }
 
@@ -77,6 +100,7 @@ export class ElectionOrchestratorController {
       electionId,
       body.positionIds,
       req.user.id,
+      req.user.role,
     );
   }
 
@@ -125,6 +149,7 @@ export class ElectionOrchestratorController {
     return this.orchestrator.approveApplicationAndCreateCandidate(
       applicationId,
       req.user.id,
+      req.user.role,
     );
   }
 
@@ -139,7 +164,7 @@ export class ElectionOrchestratorController {
     @Param('appId') applicationId: string,
     @Request() req,
   ) {
-    return this.orchestrator.rejectApplication(applicationId, req.user.id);
+    return this.orchestrator.rejectApplication(applicationId, req.user.id, req.user.role);
   }
 
   /**

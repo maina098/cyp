@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /portal/admin
+Disallow: /portal/user
+Disallow: /api
+Sitemap: https://www.coastalyouthparliament.org/sitemap.xml

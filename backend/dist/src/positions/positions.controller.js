@@ -16,6 +16,7 @@ exports.PositionsController = void 0;
 const common_1 = require("@nestjs/common");
 const positions_service_1 = require("./positions.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const roles_guard_1 = require("../common/guards/roles.guard");
 let PositionsController = class PositionsController {
     positionsService;
     constructor(positionsService) {
@@ -83,7 +84,8 @@ __decorate([
 ], PositionsController.prototype, "getPosition", null);
 __decorate([
     (0, common_1.Patch)(':id/status'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),

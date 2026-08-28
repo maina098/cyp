@@ -1,6 +1,7 @@
 import { Controller, Get, Patch, Param, Body, UseGuards, BadRequestException, Query } from '@nestjs/common';
 import { PositionsService } from './positions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard, Roles } from '../common/guards/roles.guard';
 
 @Controller('positions')
 export class PositionsController {
@@ -51,7 +52,8 @@ export class PositionsController {
    * PATCH /positions/:id/status - Open or close a position (admin only)
    */
   @Patch(':id/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async updatePositionStatus(
     @Param('id') id: string,
     @Body() body: { isOpen: boolean },

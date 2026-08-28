@@ -22,16 +22,22 @@ let ElectionOrchestratorController = class ElectionOrchestratorController {
         this.orchestrator = orchestrator;
     }
     initializeElection(electionId, req) {
-        return this.orchestrator.initializeElectionWithPositions(electionId, req.user.id);
+        return this.orchestrator.initializeElectionWithPositions(electionId, req.user.id, req.user.role);
     }
     transitionStatus(electionId, body, req) {
-        return this.orchestrator.transitionElectionStatus(electionId, body.status, req.user.id);
+        return this.orchestrator.transitionElectionStatus(electionId, body.status, req.user.id, req.user.role);
+    }
+    addCandidate(electionId, body, req) {
+        return this.orchestrator.addCandidate(electionId, body, req.user.id, req.user.role);
+    }
+    removeCandidate(electionId, candidateId, req) {
+        return this.orchestrator.removeCandidate(electionId, candidateId, req.user.id, req.user.role);
     }
     openPositions(electionId, body, req) {
-        return this.orchestrator.openPositionsForApplications(electionId, body.positionIds, req.user.id);
+        return this.orchestrator.openPositionsForApplications(electionId, body.positionIds, req.user.id, req.user.role);
     }
     closePositions(electionId, body, req) {
-        return this.orchestrator.closePositionsForApplications(electionId, body.positionIds, req.user.id);
+        return this.orchestrator.closePositionsForApplications(electionId, body.positionIds, req.user.id, req.user.role);
     }
     getDashboardStats(electionId) {
         return this.orchestrator.getElectionDashboardStats(electionId);
@@ -43,10 +49,10 @@ let ElectionOrchestratorController = class ElectionOrchestratorController {
         return this.orchestrator.getElectionApplications(electionId, filters);
     }
     approveApplication(electionId, applicationId, req) {
-        return this.orchestrator.approveApplicationAndCreateCandidate(applicationId, req.user.id);
+        return this.orchestrator.approveApplicationAndCreateCandidate(applicationId, req.user.id, req.user.role);
     }
     rejectApplication(electionId, applicationId, req) {
-        return this.orchestrator.rejectApplication(applicationId, req.user.id);
+        return this.orchestrator.rejectApplication(applicationId, req.user.id, req.user.role);
     }
     getSystemActivity(limit) {
         return this.orchestrator.getSystemActivity(limit ? parseInt(limit, 10) : 50);
@@ -72,6 +78,26 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], ElectionOrchestratorController.prototype, "transitionStatus", null);
+__decorate([
+    (0, common_1.Post)(':id/candidates'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", void 0)
+], ElectionOrchestratorController.prototype, "addCandidate", null);
+__decorate([
+    (0, common_1.Delete)(':id/candidates/:candidateId'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('candidateId')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", void 0)
+], ElectionOrchestratorController.prototype, "removeCandidate", null);
 __decorate([
     (0, common_1.Post)(':id/open-positions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

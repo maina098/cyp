@@ -12,6 +12,7 @@ export type ElectionCandidate = {
   bio?: string | null;
   photoUrl?: string | null;
   position?: number;
+  positionId?: string | null;
 };
 
 export type ElectionDetails = {
@@ -23,6 +24,7 @@ export type ElectionDetails = {
   endsAt: string;
   createdBy: string;
   candidates: ElectionCandidate[];
+  positions?: Array<{ id: string; title: string }>;
   electionResults?: Array<{
     id: string;
     candidateId: string;
@@ -67,6 +69,23 @@ export default function LiveElection({ election }: { election: ElectionDetails }
     return () => {
       socket.disconnect();
     };
+  }, [election.id]);
+
+  useEffect(() => {
+    const loadResults = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/elections/${election.id}/results`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (Array.isArray(payload)) setResults(payload);
+        else if (Array.isArray(payload?.results)) setResults(payload.results);
+      } catch {
+        // WebSocket updates remain the primary live path.
+      }
+    };
+    loadResults();
+    const timer = window.setInterval(loadResults, 15000);
+    return () => window.clearInterval(timer);
   }, [election.id]);
 
   useEffect(() => {
@@ -193,9 +212,19 @@ export default function LiveElection({ election }: { election: ElectionDetails }
             const candidateResult = results.find((item) => item.candidateId === candidate.id);
             const voteCount = candidateResult?.voteCount ?? 0;
             const winnerShare = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
+            const positionTitle = election.positions?.find((position) => position.id === candidate.positionId)?.title || (candidate.position && election.positions?.[candidate.position - 1]?.title);
+            const samePositionCandidates = election.candidates.filter((item) => item.position === candidate.position);
+            const positionVotes = samePositionCandidates.reduce((sum, item) => sum + (results.find((result) => result.candidateId === item.id)?.voteCount || 0), 0);
+            const positionWinner = samePositionCandidates.reduce<ElectionCandidate | null>((winner, item) => {
+              const itemVotes = results.find((result) => result.candidateId === item.id)?.voteCount || 0;
+              const winnerVotes = winner ? results.find((result) => result.candidateId === winner.id)?.voteCount || 0 : -1;
+              return itemVotes > winnerVotes ? item : winner;
+            }, null);
 
             return (
-              <label key={candidate.id} className={`candidate-card ${selectedCandidate === candidate.id ? 'selected' : ''}`} style={{ display: 'flex', gap: 16, alignItems: 'center', padding: 16, border: '1px solid #dfe6ff', borderRadius: 16, background: selectedCandidate === candidate.id ? '#eef3ff' : '#fff' }}>
+              <div key={candidate.id}>
+                {(positionTitle || candidate.position === 0) && (election.candidates.findIndex((item) => item.position === candidate.position) === election.candidates.indexOf(candidate)) && <h3 style={{ margin: '12px 0 8px' }}>{positionTitle || 'Candidates'}</h3>}
+                <label className={`candidate-card ${selectedCandidate === candidate.id ? 'selected' : ''}`} style={{ display: 'flex', gap: 16, alignItems: 'center', padding: 16, border: '1px solid #dfe6ff', borderRadius: 16, background: selectedCandidate === candidate.id ? '#eef3ff' : '#fff' }}>
                 <input
                   type="radio"
                   name="candidate"
@@ -212,13 +241,14 @@ export default function LiveElection({ election }: { election: ElectionDetails }
                       <h4>{candidate.name}</h4>
                       {candidate.bio && <p>{candidate.bio}</p>}
                     </div>
-                    <strong>{voteCount} votes · {winnerShare.toFixed(2)}%</strong>
+                    <strong>{voteCount} votes · {winnerShare.toFixed(2)}%{isClosed && positionWinner?.id === candidate.id && positionVotes > 0 ? ' · Winner' : ''}</strong>
                   </div>
                   <div className="vote-bar" style={{ marginTop: 8, height: 10, background: '#edf2ff', borderRadius: 999, overflow: 'hidden' }}>
                     <div style={{ width: `${winnerShare}%`, height: '100%', background: '#3f51b5' }} />
                   </div>
                 </div>
-              </label>
+                </label>
+              </div>
             );
           })}
         </div>

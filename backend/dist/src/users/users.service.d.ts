@@ -131,6 +131,7 @@ export declare class UsersService {
                 bio: string | null;
                 createdAt: Date;
                 electionId: string;
+                positionId: string | null;
                 position: number;
                 photoUrl: string | null;
             }[];
@@ -141,6 +142,7 @@ export declare class UsersService {
                     bio: string | null;
                     createdAt: Date;
                     electionId: string;
+                    positionId: string | null;
                     position: number;
                     photoUrl: string | null;
                 };

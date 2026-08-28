@@ -16,14 +16,17 @@ exports.ElectionsController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const elections_service_1 = require("./elections.service");
+const election_orchestrator_service_1 = require("./election-orchestrator.service");
 const create_election_dto_1 = require("./dto/create-election.dto");
 const update_election_dto_1 = require("./dto/update-election.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const pagination_dto_1 = require("../common/dto/pagination.dto");
 let ElectionsController = class ElectionsController {
     electionsService;
-    constructor(electionsService) {
+    electionOrchestrator;
+    constructor(electionsService, electionOrchestrator) {
         this.electionsService = electionsService;
+        this.electionOrchestrator = electionOrchestrator;
     }
     create(createElectionDto, req) {
         return this.electionsService.create(createElectionDto, req.user.id);
@@ -35,13 +38,13 @@ let ElectionsController = class ElectionsController {
         return this.electionsService.findOne(id);
     }
     update(id, updateElectionDto, req) {
-        return this.electionsService.update(id, updateElectionDto, req.user.id);
+        return this.electionsService.update(id, updateElectionDto, req.user.id, req.user.role);
     }
     updateStatus(id, body, req) {
-        return this.electionsService.updateStatus(id, body.status, req.user.id);
+        return this.electionOrchestrator.transitionElectionStatus(id, body.status, req.user.id, req.user.role);
     }
     schedule(id, body, req) {
-        return this.electionsService.scheduleElection(id, body, req.user.id);
+        return this.electionsService.scheduleElection(id, body, req.user.id, req.user.role);
     }
     delete(id, req) {
         return this.electionsService.delete(id, req.user.id);
@@ -139,6 +142,7 @@ __decorate([
 exports.ElectionsController = ElectionsController = __decorate([
     (0, swagger_1.ApiTags)('elections'),
     (0, common_1.Controller)('elections'),
-    __metadata("design:paramtypes", [elections_service_1.ElectionsService])
+    __metadata("design:paramtypes", [elections_service_1.ElectionsService,
+        election_orchestrator_service_1.ElectionOrchestratorService])
 ], ElectionsController);
 //# sourceMappingURL=elections.controller.js.map

@@ -33,6 +33,7 @@ export declare class ElectionOrchestratorController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -63,6 +64,26 @@ export declare class ElectionOrchestratorController {
         startsAt: Date;
         endsAt: Date;
         createdBy: string;
+    }>;
+    addCandidate(electionId: string, body: {
+        name: string;
+        bio?: string;
+        photoUrl?: string;
+        position?: number;
+        positionId?: string;
+    }, req: any): Promise<{
+        id: string;
+        name: string;
+        bio: string | null;
+        createdAt: Date;
+        electionId: string;
+        positionId: string | null;
+        position: number;
+        photoUrl: string | null;
+    }>;
+    removeCandidate(electionId: string, candidateId: string, req: any): Promise<{
+        success: boolean;
+        message: string;
     }>;
     openPositions(electionId: string, body: {
         positionIds: string[];
@@ -219,6 +240,7 @@ export declare class ElectionOrchestratorController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         };

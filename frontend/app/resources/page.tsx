@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import { SiteShell } from '@/components/site-shell';
 import { getResources } from '@/lib/api';
+
+export const metadata: Metadata = {
+  title: 'Resources',
+  description: 'Access Coastal Youth Parliament blueprints, reports, and strategic development resources.',
+  alternates: { canonical: '/resources' },
+};
 
 export default async function ResourcesPage() {
   const resources = await getResources();

@@ -15,7 +15,7 @@ import {
 import { API_BASE } from '@/lib/api-base'
 import { WS_BASE } from '@/lib/api-base'
 import { io } from 'socket.io-client'
-import { AdminEvent, AdminResource, ElectionApplication, approveElectionApplication, createAdminEvent, createAdminResource, deleteAdminEvent, deleteAdminResource, getAdminApplications, getAdminEvents, getAdminResources, getElections, getSystemHealth, rejectElectionApplication, updateApplicationStatus as updateElectionApplicationStatus, uploadAdminResource } from '@/lib/api'
+import { AdminEvent, AdminResource, ElectionApplication, ElectionPosition, addElectionCandidate, approveElectionApplication, closeApplications, createAdminEvent, createAdminResource, deleteAdminEvent, deleteElectionCandidate, deleteAdminResource, getAdminApplications, getAdminEvents, getAdminResources, getElectionPositions, getElections, getSystemHealth, openApplications, rejectElectionApplication, transitionElectionStatus, updateApplicationStatus as updateElectionApplicationStatus, uploadAdminResource } from '@/lib/api'
 
 type ElectionRecord = {
   id: string
@@ -41,17 +41,21 @@ export default function AdminDashboard() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [activeMenu, setActiveMenu] = useState('dashboard')
+  const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [members, setMembers] = useState<MemberRecord[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [elections, setElections] = useState<ElectionRecord[]>([])
   const [liveApplications, setLiveApplications] = useState<ElectionApplication[]>([])
+  const [applicationPositions, setApplicationPositions] = useState<ElectionPosition[]>([])
   const [events, setEvents] = useState<AdminEvent[]>([])
   const [resources, setResources] = useState<AdminResource[]>([])
   const [health, setHealth] = useState<{ ok: boolean; data: any } | null>(null)
   const [eventForm, setEventForm] = useState({ title: '', description: '', location: '', date: '', status: 'UPCOMING' })
   const [resourceForm, setResourceForm] = useState({ title: '', description: '', file: null as File | null, category: 'Reports' })
   const [selectedElectionId, setSelectedElectionId] = useState<string>('')
+  const [candidateName, setCandidateName] = useState('')
+  const [candidateBio, setCandidateBio] = useState('')
   const [electionStatus, setElectionStatus] = useState<ElectionStatus>('open')
   const [blogForm, setBlogForm] = useState({
     title: '',
@@ -137,6 +141,14 @@ export default function AdminDashboard() {
     return () => { socket.disconnect() }
   }, [selectedElectionId])
 
+  useEffect(() => {
+    if (!selectedElectionId) {
+      setApplicationPositions([])
+      return
+    }
+    getElectionPositions(selectedElectionId).then(setApplicationPositions)
+  }, [selectedElectionId])
+
   const memberStats = useMemo(() => ({
     total: members.length,
     active: members.filter((member) => member.status === 'active').length,
@@ -172,7 +184,39 @@ export default function AdminDashboard() {
       : status === 'rejected'
         ? await rejectElectionApplication(token, application.electionId, applicationId)
         : await updateElectionApplicationStatus(token, applicationId, status)
-    if (result.success && result.data) setLiveApplications((current) => current.map((item) => item.id === applicationId ? result.data! : item))
+    if (result.success) setLiveApplications(await getAdminApplications(token))
+  }
+
+  const updateApplicationAccess = async (position: ElectionPosition) => {
+    const token = localStorage.getItem('token')
+    if (!token || !selectedElectionId) return
+    const result = position.isOpen
+      ? await closeApplications(token, selectedElectionId, position.id)
+      : await openApplications(token, selectedElectionId, position.id)
+    if (result.success) {
+      setApplicationPositions((current) => current.map((item) => item.id === position.id ? { ...item, isOpen: !position.isOpen } : item))
+      const [applications, elections] = await Promise.all([getAdminApplications(token), getElections()])
+      setLiveApplications(applications)
+      setElections(elections as ElectionRecord[])
+    }
+  }
+
+  const addCandidate = async () => {
+    const token = localStorage.getItem('token')
+    if (!token || !selectedElectionId || !candidateName.trim()) return
+    const candidate = await addElectionCandidate(token, selectedElectionId, { name: candidateName, bio: candidateBio })
+    if (candidate) {
+      setElections((current) => current.map((election) => election.id === selectedElectionId ? { ...election, candidates: [...election.candidates, candidate] } : election))
+      setCandidateName('')
+      setCandidateBio('')
+    }
+  }
+
+  const removeCandidate = async (candidateId: string) => {
+    const token = localStorage.getItem('token')
+    if (!token || !selectedElectionId) return
+    const result = await deleteElectionCandidate(token, selectedElectionId, candidateId)
+    if (result?.success) setElections((current) => current.map((election) => election.id === selectedElectionId ? { ...election, candidates: election.candidates.filter((candidate) => candidate.id !== candidateId) } : election))
   }
 
   const addEvent = async () => {
@@ -221,14 +265,8 @@ export default function AdminDashboard() {
     if (!token) return
 
     try {
-      await fetch(`${API_BASE}/elections/${selectedElectionId}/transition-status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: nextStatus === 'open' ? 'active' : nextStatus }),
-      })
+      const updated = await transitionElectionStatus(token, selectedElectionId, nextStatus === 'open' ? 'active' : nextStatus)
+      if (!updated) setElectionStatus('draft')
     } catch {
       // ignore status sync errors
     }
@@ -245,42 +283,47 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-layout">
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar ${menuOpen ? 'menu-open' : ''}`}>
         <div className="sidebar-brand">
           <div className="brand-icon">CYP</div>
           <span className="brand-text">Admin Panel</span>
+          <button className="mobile-menu-toggle" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen} aria-controls="admin-navigation" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}>
+            <span />
+            <span />
+            <span />
+          </button>
         </div>
 
-        <nav className="sidebar-nav">
-          <a href="#" className={`nav-link ${activeMenu === 'dashboard' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('dashboard'); }}>
+        <nav id="admin-navigation" className="sidebar-nav">
+          <a href="#" className={`nav-link ${activeMenu === 'dashboard' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('dashboard'); setMenuOpen(false); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
             Dashboard
           </a>
-          <a href="#" className={`nav-link ${activeMenu === 'members' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('members'); }}>
+          <a href="#" className={`nav-link ${activeMenu === 'members' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('members'); setMenuOpen(false); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Members
           </a>
-          <a href="#" className={`nav-link ${activeMenu === 'applications' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('applications'); }}>
+          <a href="#" className={`nav-link ${activeMenu === 'applications' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('applications'); setMenuOpen(false); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             Applications
           </a>
-          <a href="#" className={`nav-link ${activeMenu === 'news' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('news'); }}>
+          <a href="#" className={`nav-link ${activeMenu === 'news' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('news'); setMenuOpen(false); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             Blog Publisher
           </a>
-          <a href="#" className={`nav-link ${activeMenu === 'elections' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('elections'); }}>
+          <a href="#" className={`nav-link ${activeMenu === 'elections' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('elections'); setMenuOpen(false); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             Elections
           </a>
-          <a href="#" className={`nav-link ${activeMenu === 'events' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('events'); }}>
+          <a href="#" className={`nav-link ${activeMenu === 'events' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('events'); setMenuOpen(false); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Events
           </a>
-          <a href="#" className={`nav-link ${activeMenu === 'resources' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('resources'); }}>
+          <a href="#" className={`nav-link ${activeMenu === 'resources' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('resources'); setMenuOpen(false); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             Resources
           </a>
-          <a href="#" className={`nav-link ${activeMenu === 'settings' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('settings'); }}>
+          <a href="#" className={`nav-link ${activeMenu === 'settings' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('settings'); setMenuOpen(false); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             Settings
           </a>
@@ -363,8 +406,17 @@ export default function AdminDashboard() {
         {activeMenu === 'applications' && (
           <div className="panel-card">
             <div className="panel-header"><h2>Member Applications</h2><span>{liveApplications.length} live submissions</span></div>
+            <div className="application-controls">
+              <label htmlFor="application-election-select">Election</label>
+              <select id="application-election-select" value={selectedElectionId} onChange={(e) => setSelectedElectionId(e.target.value)}>
+                {elections.length === 0 ? <option value="">No elections yet</option> : elections.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+              <div className="application-positions">
+                {applicationPositions.map((position) => <div className="position-access-row" key={position.id}><span>{position.title}</span><button className={position.isOpen ? 'reject-btn' : 'accept-btn'} onClick={() => updateApplicationAccess(position)}>{position.isOpen ? 'Close applications' : 'Open applications'}</button></div>)}
+              </div>
+            </div>
             <div className="application-list">
-              {liveApplications.map((application) => (
+              {liveApplications.filter((application) => !selectedElectionId || application.electionId === selectedElectionId).map((application) => (
                 <div key={application.id} className="application-card">
                   <div className="application-meta"><strong>{application.name}</strong><span>{application.email}</span></div>
                   <p>{application.description}</p>
@@ -378,7 +430,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ))}
-              {!liveApplications.length && <p className="empty-state">No applications have been submitted.</p>}
+              {!liveApplications.filter((application) => !selectedElectionId || application.electionId === selectedElectionId).length && <p className="empty-state">No applications have been submitted.</p>}
             </div>
           </div>
         )}
@@ -459,6 +511,11 @@ export default function AdminDashboard() {
                     <option key={item.id} value={item.id}>{item.title}</option>
                   ))}
                 </select>
+              </div>
+              <div className="candidate-management">
+                <h3>Election members and candidates</h3>
+                <div className="field-row"><label>Name<input value={candidateName} onChange={(e) => setCandidateName(e.target.value)} placeholder="Candidate name" /></label><label>Bio<input value={candidateBio} onChange={(e) => setCandidateBio(e.target.value)} placeholder="Candidate profile" /></label><button className="publish-btn" onClick={addCandidate}>Add member</button></div>
+                <div className="candidate-management-list">{elections.find((item) => item.id === selectedElectionId)?.candidates?.map((candidate) => <div className="result-row" key={candidate.id}><span>{candidate.name}</span><button className="danger-btn" onClick={() => removeCandidate(candidate.id)}>Delete</button></div>)}</div>
               </div>
               <div className="election-status-box">
                 <span className="status-label">Current state</span>

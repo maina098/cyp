@@ -155,6 +155,12 @@ export class AdminService {
   }
 
   async openPosition(electionId: string, positionId: string) {
+    const election = await this.prisma.election.findUnique({ where: { id: electionId } });
+    if (!election) throw new NotFoundException('Election not found');
+    if (!['draft', 'scheduled'].includes(election.status)) {
+      throw new BadRequestException('Applications can only be opened for draft or scheduled elections');
+    }
+
     const position = await this.prisma.electionPosition.findUnique({
       where: { id: positionId },
     });

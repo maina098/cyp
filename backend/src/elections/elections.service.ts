@@ -2,7 +2,6 @@ import { Injectable, ForbiddenException, NotFoundException, Logger, BadRequestEx
 import { PrismaService } from '../prisma.service';
 import { CreateElectionDto } from './dto/create-election.dto';
 import { UpdateElectionDto } from './dto/update-election.dto';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { PaginationDto, PaginatedResult } from '../common/dto/pagination.dto';
 import { ElectionStatus } from '../common/enums/election-status.enum';
 
@@ -41,6 +40,20 @@ export class ElectionsService {
         startsAt,
         endsAt,
         createdBy: userId,
+        positions: {
+          create: [
+            'COUNTY YOUTH GOVERNOR',
+            'SECRETARY GENERAL',
+            'DELEGATE FOR GENDER AND INCLUSION',
+            'DELEGATE FOR PWDS AND SPECIAL INTERESTS',
+            'LIAISON OFFICER',
+          ].map((title) => ({
+            title,
+            description: `Application period for ${title} position`,
+            isOpen: false,
+            maxApplicants: 100,
+          })),
+        },
         status,
         candidates: {
           create: candidates.map((candidate) => ({
@@ -53,6 +66,7 @@ export class ElectionsService {
       },
       include: {
         candidates: true,
+        positions: true,
       },
     });
 
@@ -107,6 +121,7 @@ export class ElectionsService {
             bio: true,
             photoUrl: true,
             position: true,
+            positionId: true,
             _count: {
               select: { votes: true },
             },
@@ -141,12 +156,12 @@ export class ElectionsService {
     return election;
   }
 
-  async update(id: string, updateElectionDto: UpdateElectionDto, userId: string) {
+  async update(id: string, updateElectionDto: UpdateElectionDto, userId: string, userRole?: string) {
     this.logger.log(`Updating election ${id} by user ${userId}`);
     
     const election = await this.findOne(id);
 
-    if (election.createdBy !== userId) {
+    if (election.createdBy !== userId && userRole !== 'ADMIN') {
       throw new ForbiddenException('You can only update your own elections');
     }
 
@@ -191,12 +206,12 @@ export class ElectionsService {
     return updated;
   }
 
-  async updateStatus(id: string, status: 'draft' | 'scheduled' | 'active' | 'closed', userId: string) {
+  async updateStatus(id: string, status: 'draft' | 'scheduled' | 'active' | 'closed', userId: string, userRole?: string) {
     this.logger.log(`Updating election ${id} status to ${status}`);
     
     const election = await this.findOne(id);
 
-    if (election.createdBy !== userId) {
+    if (election.createdBy !== userId && userRole !== 'ADMIN') {
       throw new ForbiddenException('You can only update your own elections');
     }
 
@@ -216,10 +231,10 @@ export class ElectionsService {
     });
   }
 
-  async scheduleElection(id: string, payload: { startsAt?: string; endsAt?: string }, userId: string) {
+  async scheduleElection(id: string, payload: { startsAt?: string; endsAt?: string }, userId: string, userRole?: string) {
     const election = await this.findOne(id);
 
-    if (election.createdBy !== userId) {
+    if (election.createdBy !== userId && userRole !== 'ADMIN') {
       throw new ForbiddenException('You can only schedule your own elections');
     }
 
@@ -275,7 +290,7 @@ export class ElectionsService {
       where: { electionId },
       include: {
         candidate: {
-          select: { id: true, name: true, photoUrl: true },
+          select: { id: true, name: true, photoUrl: true, positionId: true },
         },
       },
       orderBy: { voteCount: 'desc' },
@@ -322,6 +337,10 @@ export class ElectionsService {
         },
         data: { status: 'closed' },
       });
+      await this.prisma.electionPosition.updateMany({
+        where: { electionId: { in: expired.map((election) => election.id) } },
+        data: { isOpen: false },
+      });
     }
 
     return expired.map((election) => ({
@@ -330,25 +349,4 @@ export class ElectionsService {
     }));
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
-  async syncElectionStatuses() {
-    const now = new Date();
-    const activated = await this.activateDueElections(now);
-    const closedElections = await this.closeExpiredElections(now);
-    
-    if (activated.count > 0) {
-      this.logger.log(`Activated ${activated.count} elections`);
-    }
-    
-    if (closedElections.length > 0) {
-      this.logger.log(`Closed ${closedElections.length} elections`);
-      
-      for (const election of closedElections) {
-        await this.prisma.election.update({
-          where: { id: election.id },
-          data: { status: 'closed' },
-        });
-      }
-    }
-  }
 }

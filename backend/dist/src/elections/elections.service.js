@@ -13,7 +13,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ElectionsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma.service");
-const schedule_1 = require("@nestjs/schedule");
 const election_status_enum_1 = require("../common/enums/election-status.enum");
 let ElectionsService = ElectionsService_1 = class ElectionsService {
     prisma;
@@ -43,6 +42,20 @@ let ElectionsService = ElectionsService_1 = class ElectionsService {
                 startsAt,
                 endsAt,
                 createdBy: userId,
+                positions: {
+                    create: [
+                        'COUNTY YOUTH GOVERNOR',
+                        'SECRETARY GENERAL',
+                        'DELEGATE FOR GENDER AND INCLUSION',
+                        'DELEGATE FOR PWDS AND SPECIAL INTERESTS',
+                        'LIAISON OFFICER',
+                    ].map((title) => ({
+                        title,
+                        description: `Application period for ${title} position`,
+                        isOpen: false,
+                        maxApplicants: 100,
+                    })),
+                },
                 status,
                 candidates: {
                     create: candidates.map((candidate) => ({
@@ -55,6 +68,7 @@ let ElectionsService = ElectionsService_1 = class ElectionsService {
             },
             include: {
                 candidates: true,
+                positions: true,
             },
         });
         this.logger.log(`Election ${election.id} created successfully`);
@@ -104,6 +118,7 @@ let ElectionsService = ElectionsService_1 = class ElectionsService {
                         bio: true,
                         photoUrl: true,
                         position: true,
+                        positionId: true,
                         _count: {
                             select: { votes: true },
                         },
@@ -135,10 +150,10 @@ let ElectionsService = ElectionsService_1 = class ElectionsService {
         }
         return election;
     }
-    async update(id, updateElectionDto, userId) {
+    async update(id, updateElectionDto, userId, userRole) {
         this.logger.log(`Updating election ${id} by user ${userId}`);
         const election = await this.findOne(id);
-        if (election.createdBy !== userId) {
+        if (election.createdBy !== userId && userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('You can only update your own elections');
         }
         if (election.status === 'active' || election.status === 'closed') {
@@ -174,10 +189,10 @@ let ElectionsService = ElectionsService_1 = class ElectionsService {
         this.logger.log(`Election ${id} updated successfully`);
         return updated;
     }
-    async updateStatus(id, status, userId) {
+    async updateStatus(id, status, userId, userRole) {
         this.logger.log(`Updating election ${id} status to ${status}`);
         const election = await this.findOne(id);
-        if (election.createdBy !== userId) {
+        if (election.createdBy !== userId && userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('You can only update your own elections');
         }
         const validStatuses = Object.values(election_status_enum_1.ElectionStatus);
@@ -193,9 +208,9 @@ let ElectionsService = ElectionsService_1 = class ElectionsService {
             },
         });
     }
-    async scheduleElection(id, payload, userId) {
+    async scheduleElection(id, payload, userId, userRole) {
         const election = await this.findOne(id);
-        if (election.createdBy !== userId) {
+        if (election.createdBy !== userId && userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('You can only schedule your own elections');
         }
         const startsAt = payload.startsAt ? new Date(payload.startsAt) : election.startsAt;
@@ -240,7 +255,7 @@ let ElectionsService = ElectionsService_1 = class ElectionsService {
             where: { electionId },
             include: {
                 candidate: {
-                    select: { id: true, name: true, photoUrl: true },
+                    select: { id: true, name: true, photoUrl: true, positionId: true },
                 },
             },
             orderBy: { voteCount: 'desc' },
@@ -282,37 +297,18 @@ let ElectionsService = ElectionsService_1 = class ElectionsService {
                 },
                 data: { status: 'closed' },
             });
+            await this.prisma.electionPosition.updateMany({
+                where: { electionId: { in: expired.map((election) => election.id) } },
+                data: { isOpen: false },
+            });
         }
         return expired.map((election) => ({
             id: election.id,
             status: 'closed',
         }));
     }
-    async syncElectionStatuses() {
-        const now = new Date();
-        const activated = await this.activateDueElections(now);
-        const closedElections = await this.closeExpiredElections(now);
-        if (activated.count > 0) {
-            this.logger.log(`Activated ${activated.count} elections`);
-        }
-        if (closedElections.length > 0) {
-            this.logger.log(`Closed ${closedElections.length} elections`);
-            for (const election of closedElections) {
-                await this.prisma.election.update({
-                    where: { id: election.id },
-                    data: { status: 'closed' },
-                });
-            }
-        }
-    }
 };
 exports.ElectionsService = ElectionsService;
-__decorate([
-    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_MINUTE),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], ElectionsService.prototype, "syncElectionStatuses", null);
 exports.ElectionsService = ElectionsService = ElectionsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService])

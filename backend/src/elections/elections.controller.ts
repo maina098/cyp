@@ -15,6 +15,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { ElectionsService } from './elections.service';
+import { ElectionOrchestratorService } from './election-orchestrator.service';
 import { CreateElectionDto } from './dto/create-election.dto';
 import { UpdateElectionDto } from './dto/update-election.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -23,7 +24,10 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 @ApiTags('elections')
 @Controller('elections')
 export class ElectionsController {
-  constructor(private electionsService: ElectionsService) {}
+  constructor(
+    private electionsService: ElectionsService,
+    private electionOrchestrator: ElectionOrchestratorService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -56,7 +60,7 @@ export class ElectionsController {
     @Body() updateElectionDto: UpdateElectionDto,
     @Request() req,
   ) {
-    return this.electionsService.update(id, updateElectionDto, req.user.id);
+    return this.electionsService.update(id, updateElectionDto, req.user.id, req.user.role);
   }
 
   @Patch(':id/status')
@@ -68,7 +72,7 @@ export class ElectionsController {
     @Body() body: { status: 'draft' | 'scheduled' | 'active' | 'closed' },
     @Request() req,
   ) {
-    return this.electionsService.updateStatus(id, body.status, req.user.id);
+    return this.electionOrchestrator.transitionElectionStatus(id, body.status, req.user.id, req.user.role);
   }
 
   @Patch(':id/schedule')
@@ -80,7 +84,7 @@ export class ElectionsController {
     @Body() body: { startsAt?: string; endsAt?: string },
     @Request() req,
   ) {
-    return this.electionsService.scheduleElection(id, body, req.user.id);
+    return this.electionsService.scheduleElection(id, body, req.user.id, req.user.role);
   }
 
   @Delete(':id')

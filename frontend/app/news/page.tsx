@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import { SiteShell } from '@/components/site-shell';
 import { getNews } from '@/lib/api';
+
+export const metadata: Metadata = {
+  title: 'Media Center',
+  description: 'Read news, announcements, and stories from Coastal Youth Parliament.',
+  alternates: { canonical: '/news' },
+};
 
 export default async function NewsPage() {
   const news = await getNews();

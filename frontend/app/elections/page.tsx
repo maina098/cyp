@@ -17,8 +17,9 @@ export default function ElectionsPage() {
         if (!response.ok) {
           throw new Error('Unable to load elections');
         }
-        const elections = await response.json();
-        const activeElection = Array.isArray(elections) ? elections.find((item) => item.status === 'active' || item.status === 'scheduled') ?? elections[0] : null;
+        const payload = await response.json();
+        const elections = (Array.isArray(payload) ? payload : payload?.data || []) as Array<{ id: string; status: string }>;
+        const activeElection = elections.find((item) => item.status === 'active' || item.status === 'scheduled') ?? (elections[0] || null);
 
         if (!activeElection) {
           setError('No election is currently available.');

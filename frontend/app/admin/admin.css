@@ -95,6 +95,10 @@
   overflow-y: auto;
 }
 
+.mobile-menu-toggle {
+  display: none;
+}
+
 .nav-link {
   display: flex;
   align-items: center;
@@ -459,6 +463,48 @@
   color: var(--admin-text-secondary);
 }
 
+.application-controls {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #f8f9fc;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+}
+
+.application-controls label {
+  color: var(--admin-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.application-controls select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  background: white;
+  color: var(--admin-text-primary);
+}
+
+.application-positions {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.position-access-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--admin-border);
+  color: var(--admin-text-primary);
+  font-size: 14px;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -767,24 +813,53 @@
 
   .admin-sidebar .sidebar-brand {
     padding: 14px 16px;
+    justify-content: space-between;
   }
 
   .admin-sidebar .sidebar-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 10px 12px;
-    gap: 6px;
-    scrollbar-width: thin;
+    display: none;
+    flex-direction: column;
+    padding: 8px 12px 12px;
+    gap: 4px;
   }
 
   .admin-sidebar .nav-link {
-    flex: 0 0 auto;
     min-height: 44px;
-    white-space: nowrap;
+    width: 100%;
+  }
+
+  .admin-sidebar.menu-open .sidebar-nav {
+    display: flex;
+  }
+
+  .admin-sidebar .mobile-menu-toggle {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+  }
+
+  .mobile-menu-toggle span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: currentColor;
   }
 
   .admin-sidebar .sidebar-footer {
     display: none;
+  }
+
+  .admin-sidebar.menu-open .sidebar-footer {
+    display: block;
   }
 
   .admin-main {
@@ -822,6 +897,15 @@
   .panel-card,
   .activity-section {
     padding: 16px;
+  }
+
+  .position-access-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .position-access-row button {
+    width: 100%;
   }
 
   .kpi-card {

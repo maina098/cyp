@@ -184,14 +184,41 @@ export class ApplicationsService {
 
     this.logger.log(`Admin ${userId} updating application ${id} status to ${dto.status}`);
 
-    const updated = await this.prisma.electionApplication.update({
-      where: { id },
-      data: { status: dto.status },
-      include: {
-        position: true,
-        election: true,
-        user: { select: { id: true, email: true, name: true } },
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const next = await tx.electionApplication.update({
+        where: { id },
+        data: { status: dto.status },
+        include: {
+          position: true,
+          election: true,
+          user: { select: { id: true, email: true, name: true } },
+        },
+      });
+
+      const candidate = await tx.candidate.findFirst({
+        where: { electionId: application.electionId, positionId: application.positionId, name: application.name },
+        include: { _count: { select: { votes: true } } },
+      });
+
+      if (dto.status === 'approved' && !candidate) {
+        await tx.candidate.create({
+          data: {
+            electionId: application.electionId,
+            positionId: application.positionId,
+            name: application.name,
+            bio: application.description,
+            photoUrl: null,
+            position: 0,
+          },
+        });
+      } else if (dto.status !== 'approved' && candidate) {
+        if (candidate._count.votes > 0) {
+          throw new BadRequestException('Cannot remove a candidate who has received votes');
+        }
+        await tx.candidate.delete({ where: { id: candidate.id } });
+      }
+
+      return next;
     });
 
     // Broadcast status update to all connected clients

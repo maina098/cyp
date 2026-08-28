@@ -16,11 +16,15 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
+  it('/ (GET) exposes the current API contract', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('Hello World!');
+      .expect(({ body }) => {
+        if (body.name !== 'Jumuiya System' || body.status !== 'online') {
+          throw new Error('Unexpected API root response');
+        }
+      });
   });
 
   afterEach(async () => {

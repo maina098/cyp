@@ -151,9 +151,10 @@ export const ElectionContextProvider: React.FC<{ children: React.ReactNode }> = 
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setElections(Array.isArray(data) ? data : []);
-        if (Array.isArray(data) && data.length > 0 && !selectedElection) {
+        const payload = await response.json();
+        const data = Array.isArray(payload) ? payload : payload?.data || [];
+        setElections(data);
+        if (data.length > 0 && !selectedElection) {
           selectElection(data[0].id);
         }
       }

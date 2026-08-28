@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getOverview, getNews, getEvents } from '@/lib/api';
+
+export const metadata: Metadata = {
+  title: 'Home',
+  description: 'Coastal Youth Parliament connects youth leadership, county collaboration, investment, and inclusive development.',
+  alternates: { canonical: '/' },
+};
 
 const navItems = [
   { label: 'Home', href: '/' },
@@ -105,7 +112,7 @@ export default async function HomePage() {
             </p>
             <div className="hero-actions">
               <Link href="/about" className="primary-btn">Learn more</Link>
-              <Link href="/resources" className="secondary-btn">View resources</Link>
+              <Link href="/elections" className="secondary-btn">Get involved</Link>
             </div>
           </div>
 
@@ -308,10 +315,9 @@ export default async function HomePage() {
         <div className="container footer-bottom">
           <p>© 2026 Coastal Youth Parliament. All rights reserved.</p>
           <div className="legal-links">
-            <a href="/">Terms</a>
-            <a href="/">Privacy</a>
-            <a href="/">License</a>
-            <a href="/">Policy</a>
+            <a href="/terms-of-service">Terms</a>
+            <a href="/privacy-policy">Privacy</a>
+            <a href="/faq">FAQ</a>
           </div>
         </div>
       </footer>

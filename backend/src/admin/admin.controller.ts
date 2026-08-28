@@ -84,6 +84,7 @@ export class AdminController {
       filename: (_request, file, callback) => callback(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`),
     }),
     limits: { fileSize: 25 * 1024 * 1024 },
+      fileFilter: (_request, file, callback) => callback(null, /^(image\/|application\/pdf$|application\/msword$|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document$|video\/)/.test(file.mimetype)),
   }))
   uploadResource(@UploadedFile() file: { filename: string; originalname: string; mimetype: string; size: number } | undefined) {
     if (!file) throw new BadRequestException('A resource file is required');

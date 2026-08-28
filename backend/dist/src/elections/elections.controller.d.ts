@@ -1,10 +1,12 @@
 import { ElectionsService } from './elections.service';
+import { ElectionOrchestratorService } from './election-orchestrator.service';
 import { CreateElectionDto } from './dto/create-election.dto';
 import { UpdateElectionDto } from './dto/update-election.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 export declare class ElectionsController {
     private electionsService;
-    constructor(electionsService: ElectionsService);
+    private electionOrchestrator;
+    constructor(electionsService: ElectionsService, electionOrchestrator: ElectionOrchestratorService);
     create(createElectionDto: CreateElectionDto, req: any): Promise<{
         candidates: {
             id: string;
@@ -12,8 +14,19 @@ export declare class ElectionsController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
+        }[];
+        positions: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            title: string;
+            description: string | null;
+            electionId: string;
+            isOpen: boolean;
+            maxApplicants: number;
         }[];
     } & {
         id: string;
@@ -39,6 +52,7 @@ export declare class ElectionsController {
             _count: {
                 votes: number;
             };
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -72,6 +86,7 @@ export declare class ElectionsController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -102,6 +117,7 @@ export declare class ElectionsController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -111,6 +127,16 @@ export declare class ElectionsController {
             electionId: string;
             candidateId: string;
             voteCount: number;
+        }[];
+        positions: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            title: string;
+            description: string | null;
+            electionId: string;
+            isOpen: boolean;
+            maxApplicants: number;
         }[];
     } & {
         id: string;
@@ -133,6 +159,7 @@ export declare class ElectionsController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -169,6 +196,7 @@ export declare class ElectionsController {
             candidate: {
                 id: string;
                 name: string;
+                positionId: string | null;
                 photoUrl: string | null;
             };
         }[];

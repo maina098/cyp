@@ -205,6 +205,7 @@ __decorate([
             filename: (_request, file, callback) => callback(null, `${(0, crypto_1.randomUUID)()}${(0, path_1.extname)(file.originalname).toLowerCase()}`),
         }),
         limits: { fileSize: 25 * 1024 * 1024 },
+        fileFilter: (_request, file, callback) => callback(null, /^(image\/|application\/pdf$|application\/msword$|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document$|video\/)/.test(file.mimetype)),
     })),
     __param(0, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),

@@ -235,6 +235,18 @@ export async function getElectionPositions(electionId: string): Promise<Election
   return election?.positions || [];
 }
 
+export function transitionElectionStatus(token: string, electionId: string, status: Election['status']) {
+  return authenticatedJson<Election>(token, `/elections/${electionId}/transition-status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+}
+
+export function addElectionCandidate(token: string, electionId: string, data: { name: string; bio?: string; position?: number; positionId?: string }) {
+  return authenticatedJson<{ id: string; name: string; bio?: string | null; photoUrl?: string | null; position?: number }>(token, `/elections/${electionId}/candidates`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export function deleteElectionCandidate(token: string, electionId: string, candidateId: string) {
+  return authenticatedJson<{ success: boolean }>(token, `/elections/${electionId}/candidates/${candidateId}`, { method: 'DELETE' });
+}
+
 export async function getUserApplications(token: string): Promise<ElectionApplication[]> {
   try {
     const response = await fetch(`${API_BASE}/applications/mine`, {

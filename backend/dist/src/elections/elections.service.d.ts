@@ -13,8 +13,19 @@ export declare class ElectionsService {
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
+        }[];
+        positions: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            title: string;
+            description: string | null;
+            electionId: string;
+            isOpen: boolean;
+            maxApplicants: number;
         }[];
     } & {
         id: string;
@@ -40,6 +51,7 @@ export declare class ElectionsService {
             _count: {
                 votes: number;
             };
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -66,13 +78,14 @@ export declare class ElectionsService {
         endsAt: Date;
         createdBy: string;
     }>;
-    update(id: string, updateElectionDto: UpdateElectionDto, userId: string): Promise<{
+    update(id: string, updateElectionDto: UpdateElectionDto, userId: string, userRole?: string): Promise<{
         candidates: {
             id: string;
             name: string;
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -94,13 +107,14 @@ export declare class ElectionsService {
         endsAt: Date;
         createdBy: string;
     }>;
-    updateStatus(id: string, status: 'draft' | 'scheduled' | 'active' | 'closed', userId: string): Promise<{
+    updateStatus(id: string, status: 'draft' | 'scheduled' | 'active' | 'closed', userId: string, userRole?: string): Promise<{
         candidates: {
             id: string;
             name: string;
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -125,13 +139,14 @@ export declare class ElectionsService {
     scheduleElection(id: string, payload: {
         startsAt?: string;
         endsAt?: string;
-    }, userId: string): Promise<{
+    }, userId: string, userRole?: string): Promise<{
         candidates: {
             id: string;
             name: string;
             bio: string | null;
             createdAt: Date;
             electionId: string;
+            positionId: string | null;
             position: number;
             photoUrl: string | null;
         }[];
@@ -168,6 +183,7 @@ export declare class ElectionsService {
             candidate: {
                 id: string;
                 name: string;
+                positionId: string | null;
                 photoUrl: string | null;
             };
         }[];
@@ -177,5 +193,4 @@ export declare class ElectionsService {
         id: string;
         status: string;
     }[]>;
-    syncElectionStatuses(): Promise<void>;
 }

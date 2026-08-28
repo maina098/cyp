@@ -28,7 +28,44 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
         this.prisma = prisma;
         this.resultsGateway = resultsGateway;
     }
-    async initializeElectionWithPositions(electionId, userId) {
+    async addCandidate(electionId, data, userId, userRole) {
+        const election = await this.prisma.election.findUnique({ where: { id: electionId } });
+        if (!election)
+            throw new common_1.NotFoundException('Election not found');
+        if (election.createdBy !== userId && userRole !== 'ADMIN') {
+            throw new common_1.ForbiddenException('Only admins or the election creator can add candidates');
+        }
+        if (!data.name?.trim())
+            throw new common_1.BadRequestException('Candidate name is required');
+        if (election.status === 'closed')
+            throw new common_1.BadRequestException('Cannot add candidates to a closed election');
+        return this.prisma.candidate.create({
+            data: {
+                electionId,
+                positionId: data.positionId || null,
+                name: data.name.trim(),
+                bio: data.bio?.trim() || null,
+                photoUrl: data.photoUrl || null,
+                position: data.position ?? 0,
+            },
+        });
+    }
+    async removeCandidate(electionId, candidateId, userId, userRole) {
+        const candidate = await this.prisma.candidate.findUnique({
+            where: { id: candidateId },
+            include: { election: true, _count: { select: { votes: true } } },
+        });
+        if (!candidate || candidate.electionId !== electionId)
+            throw new common_1.NotFoundException('Candidate not found');
+        if (candidate.election.createdBy !== userId && userRole !== 'ADMIN') {
+            throw new common_1.ForbiddenException('Only admins or the election creator can remove candidates');
+        }
+        if (candidate._count.votes > 0)
+            throw new common_1.BadRequestException('Cannot remove a candidate who has received votes');
+        await this.prisma.candidate.delete({ where: { id: candidateId } });
+        return { success: true, message: 'Candidate removed' };
+    }
+    async initializeElectionWithPositions(electionId, userId, userRole) {
         const defaultPositions = [
             'COUNTY YOUTH GOVERNOR',
             'SECRETARY GENERAL',
@@ -42,7 +79,7 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
         if (!election) {
             throw new common_1.NotFoundException('Election not found');
         }
-        if (election.createdBy !== userId) {
+        if (election.createdBy !== userId && userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('You can only initialize your own elections');
         }
         for (const title of defaultPositions) {
@@ -68,7 +105,7 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
             include: { positions: true },
         });
     }
-    async transitionElectionStatus(electionId, newStatus, userId) {
+    async transitionElectionStatus(electionId, newStatus, userId, userRole) {
         const election = await this.prisma.election.findUnique({
             where: { id: electionId },
             include: { positions: true, applications: true },
@@ -76,7 +113,7 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
         if (!election) {
             throw new common_1.NotFoundException('Election not found');
         }
-        if (election.createdBy !== userId) {
+        if (election.createdBy !== userId && userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('You can only update your own elections');
         }
         const currentStatus = election.status;
@@ -93,14 +130,14 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
         }
         return updatedElection;
     }
-    async openPositionsForApplications(electionId, positionIds, userId) {
+    async openPositionsForApplications(electionId, positionIds, userId, userRole) {
         const election = await this.prisma.election.findUnique({
             where: { id: electionId },
         });
         if (!election) {
             throw new common_1.NotFoundException('Election not found');
         }
-        if (election.createdBy !== userId) {
+        if (election.createdBy !== userId && userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('Only election creator can open positions');
         }
         if (election.status !== 'scheduled' && election.status !== 'draft') {
@@ -124,14 +161,14 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
         }
         return positions;
     }
-    async closePositionsForApplications(electionId, positionIds, userId) {
+    async closePositionsForApplications(electionId, positionIds, userId, userRole) {
         const election = await this.prisma.election.findUnique({
             where: { id: electionId },
         });
         if (!election) {
             throw new common_1.NotFoundException('Election not found');
         }
-        if (election.createdBy !== userId) {
+        if (election.createdBy !== userId && userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('Only election creator can close positions');
         }
         const updatedPositions = await this.prisma.electionPosition.updateMany({
@@ -218,7 +255,7 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
             orderBy: { appliedAt: 'desc' },
         });
     }
-    async approveApplicationAndCreateCandidate(applicationId, userId) {
+    async approveApplicationAndCreateCandidate(applicationId, userId, userRole) {
         const application = await this.prisma.electionApplication.findUnique({
             where: { id: applicationId },
             include: { election: true, position: true },
@@ -226,7 +263,7 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
         if (!application) {
             throw new common_1.NotFoundException('Application not found');
         }
-        if (application.election.createdBy !== userId) {
+        if (application.election.createdBy !== userId && userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('Only election creator can approve applications');
         }
         const result = await this.prisma.$transaction(async (tx) => {
@@ -235,10 +272,18 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
                 data: { status: 'approved' },
                 include: { position: true, election: true },
             });
+            const electionPositions = await tx.electionPosition.findMany({
+                where: { electionId: application.electionId },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true },
+            });
+            const candidatePosition = electionPositions.findIndex((position) => position.id === application.positionId) + 1;
             const existingCandidate = await tx.candidate.findFirst({
                 where: {
                     electionId: application.electionId,
+                    positionId: application.positionId,
                     name: application.name,
+                    position: candidatePosition,
                 },
             });
             let candidate = existingCandidate;
@@ -246,10 +291,11 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
                 candidate = await tx.candidate.create({
                     data: {
                         electionId: application.electionId,
+                        positionId: application.positionId,
                         name: application.name,
                         bio: application.description,
                         photoUrl: null,
-                        position: 0,
+                        position: candidatePosition,
                     },
                 });
             }
@@ -272,7 +318,7 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
         }
         return result;
     }
-    async rejectApplication(applicationId, userId) {
+    async rejectApplication(applicationId, userId, userRole) {
         const application = await this.prisma.electionApplication.findUnique({
             where: { id: applicationId },
             include: { election: true },
@@ -280,7 +326,7 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
         if (!application) {
             throw new common_1.NotFoundException('Application not found');
         }
-        if (application.election.createdBy !== userId) {
+        if (application.election.createdBy !== userId && userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('Only election creator can reject applications');
         }
         const updatedApp = await this.prisma.$transaction(async (tx) => {
@@ -342,12 +388,6 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
     async executeStatusTransition(election, newStatus) {
         const now = new Date();
         return await this.prisma.$transaction(async (tx) => {
-            if ((newStatus === 'scheduled' || newStatus === 'active') && election.status === 'draft') {
-                await tx.electionPosition.updateMany({
-                    where: { electionId: election.id },
-                    data: { isOpen: true },
-                });
-            }
             if (newStatus === 'closed') {
                 await tx.electionPosition.updateMany({
                     where: { electionId: election.id },

@@ -11,9 +11,9 @@ export declare class VotesService {
     getUserVote(electionId: string, voterId: string): Promise<{
         id: string;
         electionId: string;
-        votedAt: Date;
-        voterId: string;
         candidateId: string;
+        voterId: string;
+        votedAt: Date;
     } | null>;
     getElectionVotes(electionId: string, page?: number, limit?: number): Promise<{
         data: ({
@@ -28,9 +28,9 @@ export declare class VotesService {
         } & {
             id: string;
             electionId: string;
-            votedAt: Date;
-            voterId: string;
             candidateId: string;
+            voterId: string;
+            votedAt: Date;
         })[];
         meta: {
             page: number;

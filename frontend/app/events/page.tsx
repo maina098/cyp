@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import { SiteShell } from '@/components/site-shell';
 import { getEvents } from '@/lib/api';
+
+export const metadata: Metadata = {
+  title: 'Events',
+  description: 'Explore Coastal Youth Parliament programmes, forums, and public engagements.',
+  alternates: { canonical: '/events' },
+};
 
 export default async function EventsPage() {
   const events = await getEvents();

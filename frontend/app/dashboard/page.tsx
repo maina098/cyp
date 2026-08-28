@@ -23,6 +23,7 @@ export default function UserDashboard() {
   const router = useRouter()
   const [member, setMember] = useState<Member | null>(null)
   const [activeMenu, setActiveMenu] = useState('dashboard')
+  const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [resources, setResources] = useState<Item[]>([])
   const [events, setEvents] = useState<Item[]>([])
@@ -71,6 +72,8 @@ export default function UserDashboard() {
       setLoading(false)
     }
     load()
+    const refreshTimer = window.setInterval(load, 15000)
+    return () => window.clearInterval(refreshTimer)
   }, [router])
 
   const logout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); router.replace('/signin') }
@@ -135,10 +138,10 @@ export default function UserDashboard() {
 
   return (
     <div className="dashboard-layout">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><div className="brand-icon">CYP</div><span className="brand-text">Member Portal</span></div>
-        <nav className="sidebar-nav">
-          {[['dashboard', 'Dashboard'], ['profile', 'My Profile'], ['events', 'Events'], ['resources', 'Resources'], ['elections', 'Elections']].map(([key, label]) => <button key={key} className={`nav-link ${activeMenu === key ? 'active' : ''}`} onClick={() => setActiveMenu(key)}>{label}</button>)}
+      <aside className={`sidebar ${menuOpen ? 'menu-open' : ''}`}>
+        <div className="sidebar-brand"><div className="brand-icon">CYP</div><span className="brand-text">Member Portal</span><button className="mobile-menu-toggle" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen} aria-controls="member-navigation" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}><span /><span /><span /></button></div>
+        <nav id="member-navigation" className="sidebar-nav">
+          {[['dashboard', 'Dashboard'], ['profile', 'My Profile'], ['events', 'Events'], ['resources', 'Resources'], ['elections', 'Elections']].map(([key, label]) => <button key={key} className={`nav-link ${activeMenu === key ? 'active' : ''}`} onClick={() => { setActiveMenu(key); setMenuOpen(false) }}>{label}</button>)}
         </nav>
         <div className="sidebar-footer"><button onClick={logout} className="logout-btn">Logout</button></div>
       </aside>

@@ -1,4 +1,11 @@
+import type { Metadata } from 'next';
 import { SiteShell } from '@/components/site-shell';
+
+export const metadata: Metadata = {
+  title: 'About Us',
+  description: 'Learn about Coastal Youth Parliament, its mission, vision, and regional development mandate.',
+  alternates: { canonical: '/about' },
+};
 
 const topLeadership = [
   {
