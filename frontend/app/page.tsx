@@ -79,7 +79,7 @@ export default async function HomePage() {
       <header className="site-header">
         <nav className="main-nav container">
           <div className="brand-wrap">
-            <img src="https://scontent.fnbo19-2.fna.fbcdn.net/v/t39.30808-6/777260688_122095403235451882_3016686308029840433_n.jpg?stp=dst-jpg_tt6&cstp=mx816x737&ctp=s816x737&_nc_cat=108&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeEBksj6AudGjY9MRGUA5n_7KfwhF-Wx7NIp_CEX5bHs0oJv4hGAc-9QZ0-eA_H5NdtF8_p9yxcuQMsYc9--wA5v&_nc_ohc=l0Cp1pWwzFcQ7kNvwFN5Uj4&_nc_oc=Adp8b40oQajZDfbKlEhNQLy5D_2QlIxTfQoLlGeEOT_6Jx7va-YNmSUKbWphOB-WkM8&_nc_zt=23&_nc_ht=scontent.fnbo19-2.fna&_nc_gid=kMQm9QOmHPfY9Y3tC-89kg&_nc_ss=7b2a8&oh=00_AQFSUktkppT-pq-m2KgXbruBuqKrRg9dFILuQIvTvnTHHw&oe=6A8FBDB8" alt="Coastal Youth Parliament poster" className="brand-logo" />
+            <img src="/images/cyp-logo.svg" alt="Coastal Youth Parliament emblem" className="brand-logo" />
             <div>
               <strong>COASTAL</strong>
               <small>YOUTH PARLIAMENT</small>
