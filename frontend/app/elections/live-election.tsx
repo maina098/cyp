@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { API_BASE, WS_BASE } from '@/lib/api-base';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const WS_URL = WS_BASE.replace(/^ws/, 'http');
 
 export type ElectionCandidate = {
   id: string;
@@ -33,11 +33,15 @@ export type ElectionDetails = {
   }>;
 };
 
+function getCandidatePositionKey(candidate: ElectionCandidate) {
+  return candidate.positionId || `ordinal:${candidate.position ?? 0}`;
+}
+
 export default function LiveElection({ election }: { election: ElectionDetails }) {
   const [results, setResults] = useState<Array<{ candidateId: string; voteCount: number; candidate?: ElectionCandidate }>>(
     Array.isArray(election?.electionResults) ? election.electionResults : [],
   );
-  const [selectedCandidate, setSelectedCandidate] = useState<string>('');
+  const [selectedCandidates, setSelectedCandidates] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
@@ -120,10 +124,9 @@ export default function LiveElection({ election }: { election: ElectionDetails }
         });
         if (response.ok) {
           const data = await response.json();
-          if (data?.candidateId) {
-            setHasVoted(true);
-            setSelectedCandidate(data.candidateId);
-          }
+          const votes = Array.isArray(data) ? data : data?.candidateId ? [data] : [];
+          if (votes.length) setHasVoted(true);
+          setSelectedCandidates(Object.fromEntries(votes.map((vote: { positionId?: string | null; candidateId: string }) => [vote.positionId || 'general', vote.candidateId])));
         }
       } catch {
         // ignore
@@ -138,9 +141,21 @@ export default function LiveElection({ election }: { election: ElectionDetails }
     [results],
   );
 
+  const candidatesByPosition = useMemo(() => {
+    const groups = new Map<string, ElectionCandidate[]>();
+    for (const candidate of election.candidates) {
+      const key = getCandidatePositionKey(candidate);
+      const group = groups.get(key) || [];
+      group.push(candidate);
+      groups.set(key, group);
+    }
+    return Array.from(groups.values());
+  }, [election.candidates]);
+
   const voteNow = async () => {
-    if (!selectedCandidate) {
-      setMessage('Select a candidate to vote.');
+    const selections = Object.values(selectedCandidates);
+    if (!selections.length || selections.length < candidatesByPosition.length) {
+      setMessage('Select one candidate for every position.');
       return;
     }
 
@@ -154,19 +169,14 @@ export default function LiveElection({ election }: { election: ElectionDetails }
     setMessage(null);
 
     try {
-      const response = await fetch(`${API_BASE}/elections/${election?.id}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ candidateId: selectedCandidate }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Unable to cast vote');
+      for (const candidateId of selections) {
+        const response = await fetch(`${API_BASE}/elections/${election?.id}/vote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ candidateId }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || 'Unable to cast vote');
       }
 
       setHasVoted(true);
@@ -208,14 +218,13 @@ export default function LiveElection({ election }: { election: ElectionDetails }
 
       <div className="panel-box election-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
         <div className="candidate-list" style={{ display: 'grid', gap: 16 }}>
-          {election.candidates.map((candidate) => {
+          {candidatesByPosition.map((positionCandidates) => positionCandidates.map((candidate, candidateIndex) => {
             const candidateResult = results.find((item) => item.candidateId === candidate.id);
             const voteCount = candidateResult?.voteCount ?? 0;
-            const winnerShare = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
+            const positionVotes = positionCandidates.reduce((sum, item) => sum + (results.find((result) => result.candidateId === item.id)?.voteCount || 0), 0);
+            const winnerShare = positionVotes > 0 ? (voteCount / positionVotes) * 100 : 0;
             const positionTitle = election.positions?.find((position) => position.id === candidate.positionId)?.title || (candidate.position && election.positions?.[candidate.position - 1]?.title);
-            const samePositionCandidates = election.candidates.filter((item) => item.position === candidate.position);
-            const positionVotes = samePositionCandidates.reduce((sum, item) => sum + (results.find((result) => result.candidateId === item.id)?.voteCount || 0), 0);
-            const positionWinner = samePositionCandidates.reduce<ElectionCandidate | null>((winner, item) => {
+            const positionWinner = positionCandidates.reduce<ElectionCandidate | null>((winner, item) => {
               const itemVotes = results.find((result) => result.candidateId === item.id)?.voteCount || 0;
               const winnerVotes = winner ? results.find((result) => result.candidateId === winner.id)?.voteCount || 0 : -1;
               return itemVotes > winnerVotes ? item : winner;
@@ -223,13 +232,13 @@ export default function LiveElection({ election }: { election: ElectionDetails }
 
             return (
               <div key={candidate.id}>
-                {(positionTitle || candidate.position === 0) && (election.candidates.findIndex((item) => item.position === candidate.position) === election.candidates.indexOf(candidate)) && <h3 style={{ margin: '12px 0 8px' }}>{positionTitle || 'Candidates'}</h3>}
-                <label className={`candidate-card ${selectedCandidate === candidate.id ? 'selected' : ''}`} style={{ display: 'flex', gap: 16, alignItems: 'center', padding: 16, border: '1px solid #dfe6ff', borderRadius: 16, background: selectedCandidate === candidate.id ? '#eef3ff' : '#fff' }}>
+                {candidateIndex === 0 && <h3 style={{ margin: '12px 0 8px' }}>{positionTitle || 'Candidates'}</h3>}
+                <label className={`candidate-card ${selectedCandidates[getCandidatePositionKey(candidate)] === candidate.id ? 'selected' : ''}`} style={{ display: 'flex', gap: 16, alignItems: 'center', padding: 16, border: '1px solid #dfe6ff', borderRadius: 16, background: selectedCandidates[getCandidatePositionKey(candidate)] === candidate.id ? '#eef3ff' : '#fff' }}>
                 <input
                   type="radio"
-                  name="candidate"
-                  checked={selectedCandidate === candidate.id}
-                  onChange={() => setSelectedCandidate(candidate.id)}
+                  name={`candidate-${getCandidatePositionKey(candidate)}`}
+                  checked={selectedCandidates[getCandidatePositionKey(candidate)] === candidate.id}
+                  onChange={() => setSelectedCandidates((current) => ({ ...current, [getCandidatePositionKey(candidate)]: candidate.id }))}
                   disabled={!isActive || hasVoted}
                 />
                 <div className="candidate-avatar" style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, #3f51b5, #7c4dff)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 700 }}>
@@ -250,7 +259,7 @@ export default function LiveElection({ election }: { election: ElectionDetails }
                 </label>
               </div>
             );
-          })}
+          }))}
         </div>
 
         <aside className="panel-box vote-summary" style={{ padding: 20, display: 'grid', alignContent: 'start', gap: 12 }}>

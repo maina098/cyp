@@ -139,6 +139,9 @@ let ApplicationsService = ApplicationsService_1 = class ApplicationsService {
         if (userRole !== 'ADMIN') {
             throw new common_1.ForbiddenException('Only admins can update application status');
         }
+        if (!['pending', 'approved', 'rejected', 'withdrawn'].includes(dto.status)) {
+            throw new common_1.BadRequestException('Invalid application status');
+        }
         const application = await this.prisma.electionApplication.findUnique({
             where: { id },
             include: { position: true },
@@ -162,6 +165,12 @@ let ApplicationsService = ApplicationsService_1 = class ApplicationsService {
                 include: { _count: { select: { votes: true } } },
             });
             if (dto.status === 'approved' && !candidate) {
+                const positions = await tx.electionPosition.findMany({
+                    where: { electionId: application.electionId },
+                    orderBy: { createdAt: 'asc' },
+                    select: { id: true },
+                });
+                const position = positions.findIndex((item) => item.id === application.positionId) + 1;
                 await tx.candidate.create({
                     data: {
                         electionId: application.electionId,
@@ -169,7 +178,7 @@ let ApplicationsService = ApplicationsService_1 = class ApplicationsService {
                         name: application.name,
                         bio: application.description,
                         photoUrl: null,
-                        position: 0,
+                        position,
                     },
                 });
             }
@@ -179,6 +188,15 @@ let ApplicationsService = ApplicationsService_1 = class ApplicationsService {
                 }
                 await tx.candidate.delete({ where: { id: candidate.id } });
             }
+            await tx.userActivity.create({
+                data: {
+                    userId: application.userId,
+                    email: application.email,
+                    name: application.name,
+                    action: `application_${dto.status}`,
+                    details: `Application status changed to ${dto.status} for ${application.position.title}`,
+                },
+            });
             return next;
         });
         try {

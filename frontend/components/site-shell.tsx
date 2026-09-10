@@ -6,8 +6,13 @@ import Link from 'next/link';
 const navItems = [
   { label: 'Home', href: '/' },
   { label: 'About Us', href: '/about' },
+  { label: 'Resources', href: '/resources' },
+  { label: 'Events', href: '/events' },
+  { label: 'Media Center', href: '/news' },
   { label: 'Contact', href: '/contact' },
 ];
+
+const CYP_LOGO_URL = 'https://raw.githubusercontent.com/maina098/coastalYouthParliament/main/769118712_122102969019423074_6609072866730560699_n.jpg';
 
 function DropdownMenu({ label, links }: { label: string; links: { href: string; label: string }[] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -143,7 +148,7 @@ export function SiteShell({ children, eyebrow, title, intro, showTopBar = true, 
 
         <nav className="main-nav container" aria-label="Main navigation">
           <Link href="/" className="brand-wrap" aria-label="Coastal Youth Parliament - Home">
-            <img src="/images/cyp-logo.svg" alt="Coastal Youth Parliament emblem" className="brand-logo" />
+            <img src={CYP_LOGO_URL} alt="Coastal Youth Parliament logo" className="brand-logo" />
             <div>
               <strong>COASTAL</strong>
               <small>YOUTH PARLIAMENT</small>
@@ -157,14 +162,6 @@ export function SiteShell({ children, eyebrow, title, intro, showTopBar = true, 
               </Link>
             ))}
 
-            <DropdownMenu 
-              label="Media" 
-              links={[
-                { href: '/resources', label: 'Resources' },
-                { href: '/news', label: 'Media Center' },
-                { href: '/events', label: 'Events' },
-              ]} 
-            />
           </div>
 
           <div className="nav-cta">
@@ -216,7 +213,7 @@ export function SiteShell({ children, eyebrow, title, intro, showTopBar = true, 
         <div className="container footer-main">
           <div className="footer-column footer-brand">
             <div className="brand-wrap footer-brand-wrap">
-              <img src="/images/cyp-logo.svg" alt="Coastal Youth Parliament emblem" className="brand-logo" />
+              <img src={CYP_LOGO_URL} alt="Coastal Youth Parliament logo" className="brand-logo" />
               <div>
                 <strong>COASTAL</strong>
                 <small>YOUTH PARLIAMENT</small>

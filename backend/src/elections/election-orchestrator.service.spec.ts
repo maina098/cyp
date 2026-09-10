@@ -1,6 +1,30 @@
 import { ElectionOrchestratorService } from './election-orchestrator.service';
 
 describe('ElectionOrchestratorService', () => {
+  it('creates missing default positions when initializing an election', async () => {
+    const createdPositions: any[] = [];
+    const prisma = {
+      election: {
+        findUnique: jest.fn()
+          .mockResolvedValueOnce({ id: 'election-1', createdBy: 'owner-1' })
+          .mockResolvedValueOnce({ id: 'election-1', positions: createdPositions }),
+      },
+      electionPosition: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn(async ({ data }: any) => {
+          createdPositions.push(data);
+          return data;
+        }),
+      },
+    } as any;
+    const service = new ElectionOrchestratorService(prisma, {} as any);
+
+    await service.initializeElectionWithPositions('election-1', 'owner-1');
+
+    expect(prisma.electionPosition.create).toHaveBeenCalledTimes(5);
+    expect(createdPositions.every((position) => position.isOpen === false)).toBe(true);
+  });
+
   it('allows an admin to transition another user election without opening positions', async () => {
     const election = {
       id: 'election-1',
@@ -71,7 +95,7 @@ describe('ElectionOrchestratorService', () => {
     const service = new ElectionOrchestratorService(prisma, gateway);
 
     for (let index = 1; index <= 5; index += 1) {
-      await service.approveApplicationAndCreateCandidate(`application-${index}`, 'admin-1', 'ADMIN');
+      await service.approveApplicationAndCreateCandidate(`application-${index}`, 'election-1', 'admin-1', 'ADMIN');
     }
 
     expect(createdCandidates).toHaveLength(5);

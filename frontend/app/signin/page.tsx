@@ -31,7 +31,7 @@ export default function SignInPage() {
       const redirectPath = res.user?.role?.toUpperCase() === 'ADMIN' ? '/admin' : '/dashboard'
       router.replace(redirectPath)
     } else {
-      setMessage(res.message || 'Sign in failed')
+      setMessage('Internal server error. Please try again later.')
     }
   }
 

@@ -8,12 +8,14 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 };
 
+const CYP_LOGO_URL = 'https://raw.githubusercontent.com/maina098/coastalYouthParliament/main/769118712_122102969019423074_6609072866730560699_n.jpg';
+
 const navItems = [
   { label: 'Home', href: '/' },
   { label: 'About Us', href: '/about' },
   { label: 'Resources', href: '/resources' },
-  { label: 'Media Center', href: '/news' },
   { label: 'Events', href: '/events' },
+  { label: 'Media Center', href: '/news' },
   { label: 'Contact', href: '/contact' },
 ];
 
@@ -24,26 +26,16 @@ export default async function HomePage() {
     getEvents(),
   ]);
 
-  const homepageEvents = [
-    {
-      id: 'cyp-elections-2026',
-      title: 'Upcoming CYP Elections',
-      location: 'Online',
-      date: '23rd August 2026',
-    },
-    {
-      id: 'inaugural-ceremony-2026',
-      title: 'Inaugural Ceremony',
-      location: 'Physical location to be communicated soon',
-      date: '30th August 2026',
-    },
+  const homepageEvents = events.length ? events.slice(0, 3) : [
+    { id: 'leadership-forum-2026', title: 'Coastal Youth Leadership Forum', location: 'Mombasa', date: '15th October 2026' },
+    { id: 'policy-investment-forum-2026', title: 'Coastal Policy and Investment Forum', location: 'Mombasa', date: '5th November 2026' },
   ];
 
   const stats = [
-    { label: 'Active governors', value: overview?.stats?.governors ?? 6 },
-    { label: 'Secretariat members', value: overview?.stats?.secretariat ?? 18 },
-    { label: 'Published news', value: overview?.stats?.news ?? 24 },
-    { label: 'Events', value: overview?.stats?.events ?? 12 },
+    { label: 'Active governors', value: 6 },
+    { label: 'Secretariat members', value: 54 },
+    { label: 'Published news', value: 24 },
+    { label: 'Events', value: 12 },
   ];
 
   const strategicPillars = [
@@ -79,7 +71,7 @@ export default async function HomePage() {
       <header className="site-header">
         <nav className="main-nav container">
           <div className="brand-wrap">
-            <img src="/images/cyp-logo.svg" alt="Coastal Youth Parliament emblem" className="brand-logo" />
+            <img src={CYP_LOGO_URL} alt="Coastal Youth Parliament logo" className="brand-logo" />
             <div>
               <strong>COASTAL</strong>
               <small>YOUTH PARLIAMENT</small>
@@ -243,7 +235,7 @@ export default async function HomePage() {
               {homepageEvents.map((item) => (
                 <article key={item.id} className="list-item">
                   <h3>{item.title}</h3>
-                  <p>{`${item.date} · ${item.location}`}</p>
+                  <p>{`${item.date || 'Date to be announced'} · ${item.location || 'Location to be announced'}`}</p>
                 </article>
               ))}
             </div>
@@ -267,7 +259,7 @@ export default async function HomePage() {
         <div className="container footer-main">
           <div className="footer-column footer-brand">
             <div className="brand-wrap footer-brand-wrap">
-              <div className="brand-mark">C</div>
+              <img src={CYP_LOGO_URL} alt="Coastal Youth Parliament logo" className="brand-logo" />
               <div>
                 <strong>COASTAL</strong>
                 <small>YOUTH PARLIAMENT</small>

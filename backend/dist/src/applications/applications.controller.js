@@ -95,7 +95,8 @@ __decorate([
 ], ApplicationsController.prototype, "getOne", null);
 __decorate([
     (0, common_1.Patch)(':id/status'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -105,7 +106,8 @@ __decorate([
 ], ApplicationsController.prototype, "updateStatus", null);
 __decorate([
     (0, common_1.Get)('position/:positionId'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Param)('positionId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -113,7 +115,8 @@ __decorate([
 ], ApplicationsController.prototype, "getByPosition", null);
 __decorate([
     (0, common_1.Get)('stats/:electionId'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Param)('electionId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

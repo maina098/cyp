@@ -19,6 +19,7 @@ import { ElectionOrchestratorService } from './election-orchestrator.service';
 import { CreateElectionDto } from './dto/create-election.dto';
 import { UpdateElectionDto } from './dto/update-election.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles, RolesGuard } from '../common/guards/roles.guard';
 import { PaginationDto } from '../common/dto/pagination.dto';
 
 @ApiTags('elections')
@@ -30,7 +31,8 @@ export class ElectionsController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new election' })
   create(@Body() createElectionDto: CreateElectionDto, @Request() req) {

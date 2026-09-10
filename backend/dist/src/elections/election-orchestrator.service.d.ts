@@ -193,7 +193,7 @@ export declare class ElectionOrchestratorService {
         changeChampion: string | null;
         appliedAt: Date;
     })[]>;
-    approveApplicationAndCreateCandidate(applicationId: string, userId: string, userRole?: string): Promise<{
+    approveApplicationAndCreateCandidate(applicationId: string, electionId: string, userId: string, userRole?: string): Promise<{
         application: {
             election: {
                 id: string;
@@ -245,7 +245,7 @@ export declare class ElectionOrchestratorService {
             photoUrl: string | null;
         };
     }>;
-    rejectApplication(applicationId: string, userId: string, userRole?: string): Promise<{
+    rejectApplication(applicationId: string, electionId: string, userId: string, userRole?: string): Promise<{
         position: {
             id: string;
             createdAt: Date;

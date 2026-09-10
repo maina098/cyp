@@ -74,7 +74,8 @@ export class ApplicationsController {
    * PATCH /applications/:id/status - Update application status (admin only)
    */
   @Patch(':id/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateApplicationStatusDto,
@@ -87,7 +88,8 @@ export class ApplicationsController {
    * GET /applications/position/:positionId - Get all applications for a position
    */
   @Get('position/:positionId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async getByPosition(@Param('positionId') positionId: string) {
     return this.applicationsService.findByPosition(positionId);
   }
@@ -96,7 +98,8 @@ export class ApplicationsController {
    * GET /applications/stats/:electionId - Get application statistics
    */
   @Get('stats/:electionId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async getStats(@Param('electionId') electionId: string) {
     return this.applicationsService.getApplicationStats(electionId);
   }

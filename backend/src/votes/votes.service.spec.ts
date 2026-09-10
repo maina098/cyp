@@ -174,19 +174,19 @@ describe('VotesService', () => {
         voterId: 'user-123',
         candidateId: 'candidate-123',
       };
-      mockPrismaService.vote.findUnique.mockResolvedValue(mockVote);
+      mockPrismaService.vote.findMany.mockResolvedValue([mockVote]);
 
       const result = await service.getUserVote('election-123', 'user-123');
 
-      expect(result).toEqual(mockVote);
+      expect(result).toEqual([mockVote]);
     });
 
     it('should return null if vote does not exist', async () => {
-      mockPrismaService.vote.findUnique.mockResolvedValue(null);
+      mockPrismaService.vote.findMany.mockResolvedValue([]);
 
       const result = await service.getUserVote('election-123', 'user-123');
 
-      expect(result).toBeNull();
+      expect(result).toEqual([]);
     });
   });
 

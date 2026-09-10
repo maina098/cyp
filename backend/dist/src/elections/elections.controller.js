@@ -20,6 +20,7 @@ const election_orchestrator_service_1 = require("./election-orchestrator.service
 const create_election_dto_1 = require("./dto/create-election.dto");
 const update_election_dto_1 = require("./dto/update-election.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const roles_guard_1 = require("../common/guards/roles.guard");
 const pagination_dto_1 = require("../common/dto/pagination.dto");
 let ElectionsController = class ElectionsController {
     electionsService;
@@ -56,7 +57,8 @@ let ElectionsController = class ElectionsController {
 exports.ElectionsController = ElectionsController;
 __decorate([
     (0, common_1.Post)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new election' }),
     __param(0, (0, common_1.Body)()),

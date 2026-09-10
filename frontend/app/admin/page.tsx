@@ -5,17 +5,14 @@ import { useRouter } from 'next/navigation'
 import './admin.css'
 import {
   BlogPost,
-  MemberRecord,
   createBlogPost,
   getStoredBlogPosts,
-  getStoredMembers,
   persistBlogPosts,
-  persistMembers,
 } from '@/lib/content-store'
 import { API_BASE } from '@/lib/api-base'
 import { WS_BASE } from '@/lib/api-base'
 import { io } from 'socket.io-client'
-import { AdminEvent, AdminResource, ElectionApplication, ElectionPosition, addElectionCandidate, approveElectionApplication, closeApplications, createAdminEvent, createAdminResource, deleteAdminEvent, deleteElectionCandidate, deleteAdminResource, getAdminApplications, getAdminEvents, getAdminResources, getElectionPositions, getElections, getSystemHealth, openApplications, rejectElectionApplication, transitionElectionStatus, updateApplicationStatus as updateElectionApplicationStatus, uploadAdminResource } from '@/lib/api'
+import { AdminActivity, AdminEvent, AdminMember, AdminResource, ElectionApplication, ElectionPosition, MemberEventSubmission, addElectionCandidate, approveElectionApplication, closeApplications, createAdminEvent, createAdminResource, createElection, deleteAdminEvent, deleteElectionCandidate, deleteAdminResource, getAdminApplications, getAdminEvents, getAdminMembers, getAdminResources, getElectionPositions, getElections, getMemberEventSubmissions, getSystemActivity, getSystemHealth, openApplications, rejectElectionApplication, transitionElectionStatus, updateAdminMemberRole, updateApplicationStatus as updateElectionApplicationStatus, updateMemberEventSubmissionStatus, uploadAdminResource } from '@/lib/api'
 
 type ElectionRecord = {
   id: string
@@ -35,7 +32,7 @@ type User = {
   role: string
 }
 
-type ElectionStatus = 'draft' | 'open' | 'closed'
+type ElectionStatus = 'draft' | 'scheduled' | 'open' | 'closed'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -43,7 +40,9 @@ export default function AdminDashboard() {
   const [activeMenu, setActiveMenu] = useState('dashboard')
   const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [members, setMembers] = useState<MemberRecord[]>([])
+  const [members, setMembers] = useState<AdminMember[]>([])
+  const [activity, setActivity] = useState<AdminActivity[]>([])
+  const [memberSubmissions, setMemberSubmissions] = useState<MemberEventSubmission[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [elections, setElections] = useState<ElectionRecord[]>([])
   const [liveApplications, setLiveApplications] = useState<ElectionApplication[]>([])
@@ -57,6 +56,7 @@ export default function AdminDashboard() {
   const [candidateName, setCandidateName] = useState('')
   const [candidateBio, setCandidateBio] = useState('')
   const [electionStatus, setElectionStatus] = useState<ElectionStatus>('open')
+  const [electionForm, setElectionForm] = useState({ title: '', description: '', startsAt: '', endsAt: '' })
   const [blogForm, setBlogForm] = useState({
     title: '',
     summary: '',
@@ -90,29 +90,34 @@ export default function AdminDashboard() {
 
     const loadLiveData = async () => {
       try {
-        const [electionResult, applicationResult, eventResult, resourceResult, healthResult] = await Promise.allSettled([
-          getElections(), getAdminApplications(token), getAdminEvents(token), getAdminResources(token), getSystemHealth(),
+        const [electionResult, applicationResult, eventResult, resourceResult, healthResult, memberResult, activityResult, submissionResult] = await Promise.allSettled([
+          getElections(), getAdminApplications(token), getAdminEvents(token), getAdminResources(token), getSystemHealth(), getAdminMembers(token), getSystemActivity(token), getMemberEventSubmissions(token),
         ])
         const electionData = electionResult.status === 'fulfilled' ? electionResult.value : []
         const applicationData = applicationResult.status === 'fulfilled' ? applicationResult.value : []
         const eventData = eventResult.status === 'fulfilled' ? eventResult.value : []
         const resourceData = resourceResult.status === 'fulfilled' ? resourceResult.value : []
         const healthData = healthResult.status === 'fulfilled' ? healthResult.value : { ok: false, data: null }
+        const memberData = memberResult.status === 'fulfilled' ? memberResult.value : []
+        const activityData = activityResult.status === 'fulfilled' ? activityResult.value : []
+        const submissionData = submissionResult.status === 'fulfilled' ? submissionResult.value : []
         setElections(electionData as ElectionRecord[])
         setLiveApplications(applicationData)
         setEvents(eventData)
         setResources(resourceData)
         setHealth(healthData)
+        setMembers(memberData)
+        setActivity(activityData)
+        setMemberSubmissions(submissionData)
         if (electionData[0]) {
           setSelectedElectionId((current) => current || electionData[0].id)
-          setElectionStatus(electionData[0].status === 'active' ? 'open' : electionData[0].status === 'closed' ? 'closed' : 'draft')
+          setElectionStatus(electionData[0].status === 'active' ? 'open' : electionData[0].status === 'closed' ? 'closed' : electionData[0].status === 'scheduled' ? 'scheduled' : 'draft')
         }
       } catch {
         setHealth({ ok: false, data: null })
       }
     }
 
-    setMembers(getStoredMembers())
     setBlogPosts(getStoredBlogPosts())
     loadLiveData()
     const refreshTimer = window.setInterval(loadLiveData, 15000)
@@ -151,9 +156,7 @@ export default function AdminDashboard() {
 
   const memberStats = useMemo(() => ({
     total: members.length,
-    active: members.filter((member) => member.status === 'active').length,
-    pending: members.filter((member) => member.status === 'pending').length,
-    suspended: members.filter((member) => member.status === 'suspended').length,
+    active: members.filter((member) => member.role !== 'SUSPENDED').length,
   }), [members])
 
   const handleLogout = () => {
@@ -162,16 +165,11 @@ export default function AdminDashboard() {
     router.push('/signin')
   }
 
-  const deleteMember = (memberId: string) => {
-    const updatedMembers = members.filter((member) => member.id !== memberId)
-    setMembers(updatedMembers)
-    persistMembers(updatedMembers)
-  }
-
-  const updateMemberStatus = (memberId: string, status: MemberRecord['status']) => {
-    const updatedMembers = members.map((member) => member.id === memberId ? { ...member, status } : member)
-    setMembers(updatedMembers)
-    persistMembers(updatedMembers)
+  const updateMemberRole = async (memberId: string, role: string) => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const updated = await updateAdminMemberRole(token, memberId, role)
+    if (updated) setMembers((current) => current.map((member) => member.id === memberId ? { ...member, role: updated.role } : member))
   }
 
   const updateApplicationStatus = async (applicationId: string, status: ElectionApplication['status']) => {
@@ -198,6 +196,25 @@ export default function AdminDashboard() {
       const [applications, elections] = await Promise.all([getAdminApplications(token), getElections()])
       setLiveApplications(applications)
       setElections(elections as ElectionRecord[])
+    }
+  }
+
+  const reviewMemberSubmission = async (submissionId: string, status: 'APPROVED' | 'REJECTED') => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const updated = await updateMemberEventSubmissionStatus(token, submissionId, status)
+    if (updated) setMemberSubmissions((current) => current.map((item) => item.id === submissionId ? { ...item, status } : item))
+  }
+
+  const createNewElection = async () => {
+    const token = localStorage.getItem('token')
+    if (!token || !electionForm.title || !electionForm.startsAt || !electionForm.endsAt) return
+    const created = await createElection(token, { ...electionForm, status: 'draft', candidates: [] })
+    if (created) {
+      setElections((current) => [created as ElectionRecord, ...current])
+      setSelectedElectionId(created.id)
+      setElectionStatus('draft')
+      setElectionForm({ title: '', description: '', startsAt: '', endsAt: '' })
     }
   }
 
@@ -369,7 +386,7 @@ export default function AdminDashboard() {
 
             <div className="activity-section">
               <div className="activity-header"><div><h2>Recent Platform Activity</h2><p>Latest changes and updates</p></div><select className="time-filter"><option>Last 7 days</option><option>Last 30 days</option><option>All time</option></select></div>
-              <div className="activity-table"><table><thead><tr><th>Action</th><th>User</th><th>Date</th><th>Status</th></tr></thead><tbody><tr><td>Created news: "JKP Launches Blueprint 2030"</td><td>Admin</td><td>Aug 15, 2026</td><td><span className="status-badge published">Published</span></td></tr><tr><td>Updated event: "CYP Elections"</td><td>Admin</td><td>Aug 14, 2026</td><td><span className="status-badge updated">Updated</span></td></tr><tr><td>Uploaded resource: "Economic Blueprint PDF"</td><td>Admin</td><td>Aug 13, 2026</td><td><span className="status-badge published">Published</span></td></tr><tr><td>New member application: john@example.com</td><td>System</td><td>Aug 12, 2026</td><td><span className="status-badge pending">Pending</span></td></tr></tbody></table></div>
+              <div className="activity-table"><table><thead><tr><th>Action</th><th>User</th><th>Date</th><th>Status</th></tr></thead><tbody>{activity.length ? activity.map((item) => <tr key={item.id}><td>{item.details || item.action}</td><td>{item.name}<br />{item.email}</td><td>{new Date(item.createdAt).toLocaleString()}</td><td><span className="status-badge updated">Recorded</span></td></tr>) : <tr><td colSpan={4}>No member activity has been recorded yet.</td></tr>}</tbody></table></div>
             </div>
           </>
         )}
@@ -379,21 +396,20 @@ export default function AdminDashboard() {
             <div className="panel-header"><h2>System Members</h2><span>{memberStats.total} records</span></div>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Name</th><th>Contact</th><th>Profile</th><th>Role</th><th>Usage</th><th>Actions</th></tr></thead>
                 <tbody>
                   {members.map((member) => (
                     <tr key={member.id}>
                       <td>{member.name}</td>
-                      <td>{member.email}</td>
-                      <td>{member.role}</td>
-                      <td><span className={`status-pill ${member.status}`}>{member.status}</span></td>
+                      <td>{member.email}<br />{member.phone || 'No phone'}<br />{member.county || 'County not set'}{member.constituency ? `, ${member.constituency}` : ''}</td>
+                      <td>{member.bio || 'No bio provided'}</td>
+                      <td><span className="status-pill active">{member.role}</span></td>
+                      <td>{member._count.activities} activities<br />{member._count.applications} applications<br />{member._count.votes} votes</td>
                       <td className="action-cell">
-                        <select value={member.status} onChange={(e) => updateMemberStatus(member.id, e.target.value as MemberRecord['status'])}>
-                          <option value="active">Active</option>
-                          <option value="pending">Pending</option>
-                          <option value="suspended">Suspended</option>
+                        <select value={member.role} onChange={(e) => updateMemberRole(member.id, e.target.value)}>
+                          <option value="USER">Member</option>
+                          <option value="ADMIN">Admin</option>
                         </select>
-                        <button className="danger-btn" onClick={() => deleteMember(member.id)}>Delete</button>
                       </td>
                     </tr>
                   ))}
@@ -447,6 +463,11 @@ export default function AdminDashboard() {
             </div>
             <div className="published-posts">
               {events.map((event) => <article key={event.id} className="post-card"><div className="post-head"><strong>{event.title}</strong><span>{event.status}</span></div><p>{event.description}</p><small>{new Date(event.date).toLocaleString()} · {event.location}</small><button className="danger-btn" onClick={() => removeEvent(event.id)}>Delete event</button></article>)}
+            </div>
+            <div className="published-posts">
+              <div className="panel-header"><h3>Member activity submissions</h3><span>{memberSubmissions.filter((item) => item.status === 'PENDING').length} pending review</span></div>
+              {memberSubmissions.map((submission) => <article key={submission.id} className="post-card"><div className="post-head"><strong>{submission.title}</strong><span>{submission.status}</span></div><p>{submission.description || 'No description provided.'}</p><small>{submission.user.name} · {submission.user.email} · {submission.event.title}</small>{submission.status === 'PENDING' && <div className="application-actions"><button className="accept-btn" onClick={() => reviewMemberSubmission(submission.id, 'APPROVED')}>Approve</button><button className="reject-btn" onClick={() => reviewMemberSubmission(submission.id, 'REJECTED')}>Reject</button></div>}</article>)}
+              {!memberSubmissions.length && <p className="empty-state">No member activity submissions have been recorded.</p>}
             </div>
           </div>
         )}
@@ -503,6 +524,13 @@ export default function AdminDashboard() {
         {activeMenu === 'elections' && (
           <div className="panel-card">
             <div className="panel-header"><h2>Election Moderation</h2><span>Control the live election cycle</span></div>
+            <div className="blog-editor">
+              <h3>Create election cycle</h3>
+              <div className="field-row"><label>Title<input value={electionForm.title} onChange={(e) => setElectionForm({ ...electionForm, title: e.target.value })} /></label></div>
+              <div className="field-row"><label>Description<textarea value={electionForm.description} onChange={(e) => setElectionForm({ ...electionForm, description: e.target.value })} rows={2} /></label></div>
+              <div className="field-row"><label>Starts<input type="datetime-local" value={electionForm.startsAt} onChange={(e) => setElectionForm({ ...electionForm, startsAt: e.target.value })} /></label><label>Ends<input type="datetime-local" value={electionForm.endsAt} onChange={(e) => setElectionForm({ ...electionForm, endsAt: e.target.value })} /></label></div>
+              <button className="publish-btn" onClick={createNewElection}>Create draft election</button>
+            </div>
             <div className="election-controls">
               <div className="field-row">
                 <label htmlFor="election-select">Election</label>
@@ -523,6 +551,7 @@ export default function AdminDashboard() {
               </div>
               <div className="toggle-row">
                 <button className={electionStatus === 'draft' ? 'toggle-btn active' : 'toggle-btn'} onClick={() => handleElectionAction('draft')}>Draft</button>
+                <button className={electionStatus === 'scheduled' ? 'toggle-btn active' : 'toggle-btn'} onClick={() => handleElectionAction('scheduled')}>Scheduled</button>
                 <button className={electionStatus === 'open' ? 'toggle-btn active' : 'toggle-btn'} onClick={() => handleElectionAction('open')}>Open</button>
                 <button className={electionStatus === 'closed' ? 'toggle-btn active' : 'toggle-btn'} onClick={() => handleElectionAction('closed')}>Closed</button>
               </div>

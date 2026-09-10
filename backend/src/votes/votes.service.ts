@@ -54,6 +54,7 @@ export class VotesService {
           data: {
             electionId,
             candidateId: castVoteDto.candidateId,
+            positionId: candidate.positionId,
             voterId,
           },
         });
@@ -108,7 +109,7 @@ export class VotesService {
       if (error.code === 'P2002') {
         // Unique constraint violation - user already voted
         this.logger.warn(`Duplicate vote attempt by user ${voterId} in election ${electionId}`);
-        throw new ConflictException('You have already voted in this election');
+        throw new ConflictException('You have already voted for this position');
       }
       
       this.logger.error(`Vote failed for user ${voterId}: ${error.message}`, error.stack);
@@ -117,13 +118,9 @@ export class VotesService {
   }
 
   async getUserVote(electionId: string, voterId: string) {
-    return this.prisma.vote.findUnique({
-      where: {
-        electionId_voterId: {
-          electionId,
-          voterId,
-        },
-      },
+    return this.prisma.vote.findMany({
+      where: { electionId, voterId },
+      orderBy: { votedAt: 'asc' },
     });
   }
 

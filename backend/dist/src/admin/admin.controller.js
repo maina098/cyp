@@ -46,6 +46,9 @@ let AdminController = class AdminController {
     getMemberEventSubmissions() {
         return this.adminService.getMemberEventSubmissions();
     }
+    updateMemberEventSubmissionStatus(submissionId, body) {
+        return this.adminService.updateMemberEventSubmissionStatus(submissionId, body.status);
+    }
     getMemberCommunityServices() {
         return this.adminService.getMemberCommunityServices();
     }
@@ -107,6 +110,12 @@ let AdminController = class AdminController {
     getUserActivityStats() {
         return this.adminService.getUserActivityStats();
     }
+    getUsers() {
+        return this.adminService.getUsers();
+    }
+    updateUserRole(userId, body) {
+        return this.adminService.updateUserRole(userId, body.role);
+    }
     getAllApplications(query) {
         const { electionId, positionId, status, county, page, limit } = query;
         return this.adminService.getAllApplications({ electionId, positionId, status, county }, { page: page ? parseInt(page, 10) : 1, limit: limit ? parseInt(limit, 10) : 50 });
@@ -156,6 +165,14 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "getMemberEventSubmissions", null);
+__decorate([
+    (0, common_1.Patch)('member-submissions/events/:submissionId/status'),
+    __param(0, (0, common_1.Param)('submissionId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateMemberEventSubmissionStatus", null);
 __decorate([
     (0, common_1.Get)('member-submissions/community-services'),
     __metadata("design:type", Function),
@@ -288,6 +305,22 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "getUserActivityStats", null);
+__decorate([
+    (0, common_1.Get)('users'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get registered members with profile details' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getUsers", null);
+__decorate([
+    (0, common_1.Patch)('users/:userId/role'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update a member role' }),
+    __param(0, (0, common_1.Param)('userId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateUserRole", null);
 __decorate([
     (0, common_1.Get)('applications'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all applications with pagination' }),

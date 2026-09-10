@@ -14,12 +14,21 @@ let AllExceptionsFilter = class AllExceptionsFilter {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse();
         const request = ctx.getRequest();
-        const status = exception instanceof common_1.HttpException
-            ? exception.getStatus()
-            : common_1.HttpStatus.INTERNAL_SERVER_ERROR;
-        const message = exception instanceof common_1.HttpException
-            ? exception.getResponse()
-            : 'Internal server error';
+        const databaseErrorCodes = new Set(['P1000', 'P1001', 'P1002', 'P2039', 'ETIMEDOUT', 'ENOTFOUND']);
+        const errorCode = exception && typeof exception === 'object' && 'code' in exception
+            ? String(exception.code)
+            : '';
+        const databaseUnavailable = databaseErrorCodes.has(errorCode);
+        const status = databaseUnavailable
+            ? common_1.HttpStatus.SERVICE_UNAVAILABLE
+            : exception instanceof common_1.HttpException
+                ? exception.getStatus()
+                : common_1.HttpStatus.INTERNAL_SERVER_ERROR;
+        const message = databaseUnavailable
+            ? 'Database unavailable. Check the backend DATABASE_URL and Supabase project status.'
+            : exception instanceof common_1.HttpException
+                ? exception.getResponse()
+                : 'Internal server error';
         const errorResponse = {
             statusCode: status,
             timestamp: new Date().toISOString(),

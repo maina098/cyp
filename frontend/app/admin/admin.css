@@ -922,6 +922,88 @@
     flex-direction: column;
   }
 
+  .admin-layout,
+  .admin-main,
+  .panel-card,
+  .activity-section,
+  .application-card,
+  .post-card {
+    min-width: 0;
+  }
+
+  .header-greeting,
+  .header-greeting h1,
+  .header-greeting p,
+  .application-card p,
+  .post-card p,
+  .post-card small {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .panel-card,
+  .activity-section {
+    border-radius: 10px;
+  }
+
+  .field-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .field-row input,
+  .field-row textarea,
+  .field-row select,
+  .publish-btn,
+  .accept-btn,
+  .reject-btn,
+  .danger-btn,
+  .toggle-btn {
+    min-height: 44px;
+  }
+
+  .publish-btn,
+  .application-actions,
+  .application-actions button,
+  .toggle-row,
+  .toggle-row button {
+    width: 100%;
+  }
+
+  .application-actions,
+  .toggle-row {
+    flex-direction: column;
+  }
+
+  .position-access-row {
+    overflow-wrap: anywhere;
+  }
+
+
+@media (max-width: 420px) {
+  .admin-sidebar .sidebar-brand {
+    padding-inline: 12px;
+  }
+
+  .brand-text {
+    font-size: 16px;
+  }
+
+  .admin-main {
+    padding-inline: 10px;
+  }
+
+  .panel-card,
+  .activity-section,
+  .kpi-card {
+    padding: 14px;
+  }
+
+  .activity-table table,
+  .table-wrap table {
+    min-width: 500px;
+  }
+}
   .action-cell {
     align-items: stretch;
     flex-direction: column;

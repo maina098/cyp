@@ -17,13 +17,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
-      exception instanceof HttpException
+    const databaseErrorCodes = new Set(['P1000', 'P1001', 'P1002', 'P2039', 'ETIMEDOUT', 'ENOTFOUND']);
+    const errorCode = exception && typeof exception === 'object' && 'code' in exception
+      ? String((exception as { code: unknown }).code)
+      : '';
+    const databaseUnavailable = databaseErrorCodes.has(errorCode);
+
+    const status = databaseUnavailable
+      ? HttpStatus.SERVICE_UNAVAILABLE
+      : exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
+    const message = databaseUnavailable
+      ? 'Database unavailable. Check the backend DATABASE_URL and Supabase project status.'
+      : exception instanceof HttpException
         ? exception.getResponse()
         : 'Internal server error';
 

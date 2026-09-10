@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import LiveElection, { ElectionDetails } from './live-election';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { API_BASE } from '@/lib/api-base';
 
 export default function ElectionsPage() {
   const [election, setElection] = useState<ElectionDetails | null>(null);

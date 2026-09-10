@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, IsUrl, MinLength, MaxLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsUrl, MinLength, MaxLength, Matches } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateProfileDto {
@@ -16,7 +16,7 @@ export class UpdateProfileDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @Matches(/^(https?:\/\/|\/uploads\/)/i, { message: 'Profile image must be a valid URL or uploaded asset path' })
   profileImageUrl?: string;
 
   @ApiPropertyOptional()
@@ -74,7 +74,7 @@ export class CreateEventParticipationDto {
   description?: string;
 
   @IsOptional()
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @Matches(/^(https?:\/\/|\/uploads\/)/i, { message: 'Media must be a valid URL or uploaded asset path' })
   mediaUrl?: string;
 
   @IsOptional()
@@ -95,7 +95,7 @@ export class CreateCommunityServiceDto {
   description: string;
 
   @IsOptional()
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @Matches(/^(https?:\/\/|\/uploads\/)/i, { message: 'Media must be a valid URL or uploaded asset path' })
   mediaUrl?: string;
 
   @IsOptional()

@@ -82,17 +82,19 @@ export class ElectionOrchestratorService {
       throw new ForbiddenException('You can only initialize your own elections');
     }
 
-    // Create positions if they don't exist
+    // Create positions that are missing while preserving existing positions.
     for (const title of defaultPositions) {
-      await this.prisma.electionPosition.findUnique({
+      const existingPosition = await this.prisma.electionPosition.findUnique({
         where: {
           electionId_title: {
             electionId,
             title,
           },
         },
-      }).catch(() =>
-        this.prisma.electionPosition.create({
+      });
+
+      if (!existingPosition) {
+        await this.prisma.electionPosition.create({
           data: {
             electionId,
             title,
@@ -100,8 +102,8 @@ export class ElectionOrchestratorService {
             isOpen: false,
             maxApplicants: 100,
           },
-        }),
-      );
+        });
+      }
     }
 
     return this.prisma.election.findUnique({
@@ -350,6 +352,7 @@ export class ElectionOrchestratorService {
    */
   async approveApplicationAndCreateCandidate(
     applicationId: string,
+    electionId: string,
     userId: string,
     userRole?: string,
   ) {
@@ -360,6 +363,10 @@ export class ElectionOrchestratorService {
 
     if (!application) {
       throw new NotFoundException('Application not found');
+    }
+
+    if (application.electionId !== electionId) {
+      throw new BadRequestException('Application does not belong to this election');
     }
 
     if (application.election.createdBy !== userId && userRole !== 'ADMIN') {
@@ -438,7 +445,7 @@ export class ElectionOrchestratorService {
    * Reject application
    * Wrapped in transaction for data consistency
    */
-  async rejectApplication(applicationId: string, userId: string, userRole?: string) {
+  async rejectApplication(applicationId: string, electionId: string, userId: string, userRole?: string) {
     const application = await this.prisma.electionApplication.findUnique({
       where: { id: applicationId },
       include: { election: true },
@@ -446,6 +453,10 @@ export class ElectionOrchestratorService {
 
     if (!application) {
       throw new NotFoundException('Application not found');
+    }
+
+    if (application.electionId !== electionId) {
+      throw new BadRequestException('Application does not belong to this election');
     }
 
     if (application.election.createdBy !== userId && userRole !== 'ADMIN') {

@@ -6,10 +6,10 @@ import { changeMemberPassword, ElectionPosition, getElectionPositions, getEvents
 import LiveElection from '@/app/elections/live-election'
 import './dashboard.css'
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '')
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://cyp-1jps.onrender.com').replace(/\/$/, '')
 
 type Member = { id?: string; email: string; name: string; role?: string; county?: string | null; phone?: string | null; profileImageUrl?: string | null; constituency?: string | null; bio?: string | null }
-type Item = { id?: string; title: string; summary?: string; content?: string; description?: string; publishedAt?: string; startsAt?: string; endsAt?: string; date?: string; location?: string; fileUrl?: string }
+type Item = { id?: string; title: string; summary?: string; content?: string; description?: string; publishedAt?: string; startsAt?: string; endsAt?: string; date?: string; location?: string; fileUrl?: string; participationStatus?: string; mediaUrl?: string | null }
 type Application = { id: string; status: string; appliedAt?: string; position?: { title?: string }; electionId?: string }
 type Activity = { label: string; date: string; status: string }
 
@@ -27,6 +27,7 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true)
   const [resources, setResources] = useState<Item[]>([])
   const [events, setEvents] = useState<Item[]>([])
+  const [organizationEvents, setOrganizationEvents] = useState<Item[]>([])
   const [elections, setElections] = useState<any[]>([])
   const [applications, setApplications] = useState<Application[]>([])
   const [liveStats, setLiveStats] = useState<any>(null)
@@ -60,11 +61,16 @@ export default function UserDashboard() {
         setMember(dashboard.user)
         setStats(dashboard.stats)
         setProfileForm({ name: dashboard.user.name || '', email: dashboard.user.email || '', phone: dashboard.user.phone || '', county: dashboard.user.county || '', constituency: dashboard.user.constituency || '', bio: dashboard.user.bio || '' })
-        setResources(dashboard.resources || [])
-        setEvents((dashboard.events || []).map((item) => ({ ...item.event, participationStatus: item.status, mediaUrl: item.mediaUrl })))
+        setResources((dashboard.resources || []).map((resource) => ({ ...resource, fileUrl: resource.fileUrl && resource.fileUrl.startsWith('/') ? `${API_BASE}${resource.fileUrl}` : resource.fileUrl })))
+        setOrganizationEvents(await getEvents())
+        setEvents((dashboard.events || []).map((item) => ({ ...item.event, title: item.title || item.event.title, description: item.description || item.event.description, participationStatus: item.status, mediaUrl: item.mediaUrl })))
         setElections(dashboard.elections || [])
         setApplications((dashboard.elections || []).flatMap((election: any) => election.applications || []))
-        const openElection = (dashboard.elections || []).find((election: any) => election.status === 'active' || election.status === 'scheduled')
+        const currentTime = Date.now()
+        const openElection = (dashboard.elections || []).find((election: any) => {
+          const withinApplicationWindow = currentTime >= new Date(election.startsAt).getTime() && currentTime <= new Date(election.endsAt).getTime()
+          return (election.status === 'active' || election.status === 'scheduled') && withinApplicationWindow
+        })
         if (openElection) setOpenPositions((await getElectionPositions(openElection.id)).filter((position) => position.isOpen))
         setLiveStats(null)
         setActivity((dashboard.recentActivity || []).map((item) => ({ label: item.details || item.action, date: item.createdAt, status: 'Recorded' })))
@@ -157,7 +163,7 @@ export default function UserDashboard() {
           <div className="dashboard-card"><div className="section-heading"><p className="eyebrow">Account security</p><h2>Change password</h2></div><form className="dashboard-form" onSubmit={submitPassword}><label>Current password<input type="password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} required /></label><label>New password<input type="password" value={passwordForm.next} onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })} required /></label><label>Confirm new password<input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} required /></label><button className="secondary-action">Update password</button></form>{profileMessage && <p className="inline-message">{profileMessage}</p>}</div>
         </section>}
 
-  {activeMenu === 'events' && <section className="dashboard-section"><div className="section-heading"><p className="eyebrow">Participation</p><h2>Events and activities</h2><p>Events attended: {attendedCount}</p></div><div className="item-grid">{events.map((item) => <article className="dashboard-card" key={item.id || item.title}><h3>{item.title}</h3><p>{item.description || item.summary || 'Organization event'}</p><span className="muted-text">{formatDate(item.date || item.startsAt)} {item.location ? `• ${item.location}` : ''}</span></article>)}</div><div className="dashboard-card form-card"><h3>Submit another activity</h3><form className="dashboard-form" onSubmit={submitEvent}><label>Organization event<select required value={eventForm.eventId} onChange={(e) => setEventForm({ ...eventForm, eventId: e.target.value })}><option value="">Select an event</option>{events.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label><label>Activity title<input required value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} /></label><label>Description<textarea required rows={4} value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })} /></label><label>Photo or document<input type="file" accept="image/*,.pdf,.doc,.docx" onChange={(e) => setEventForm({ ...eventForm, attachment: e.target.files?.[0] || null })} /></label><button className="primary-action">Submit for admin review</button></form>{eventMessage && <p className="inline-message">{eventMessage}</p>}</div></section>}
+  {activeMenu === 'events' && <section className="dashboard-section"><div className="section-heading"><p className="eyebrow">Participation</p><h2>Events and activities</h2><p>Events attended: {attendedCount}</p></div><div className="item-grid">{events.map((item) => <article className="dashboard-card" key={item.id || item.title}><div className="section-heading"><p className="eyebrow">Your submission</p><h3>{item.title}</h3></div><p>{item.description || item.summary || 'Organization event'}</p><span className="muted-text">{formatDate(item.date || item.startsAt)} {item.location ? `• ${item.location}` : ''}</span><strong className={`status-badge ${item.participationStatus?.toLowerCase()}`}>{item.participationStatus}</strong></article>)}</div><div className="dashboard-card form-card"><h3>Submit another activity</h3><form className="dashboard-form" onSubmit={submitEvent}><label>Organization event<select required value={eventForm.eventId} onChange={(e) => setEventForm({ ...eventForm, eventId: e.target.value })}><option value="">Select an event</option>{organizationEvents.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label><label>Activity title<input required value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} /></label><label>Description<textarea required rows={4} value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })} /></label><label>Photo or document<input type="file" accept="image/*,.pdf,.doc,.docx" onChange={(e) => setEventForm({ ...eventForm, attachment: e.target.files?.[0] || null })} /></label><button className="primary-action">Submit for admin review</button></form>{eventMessage && <p className="inline-message">{eventMessage}</p>}</div></section>}
 
   {activeMenu === 'resources' && <section className="dashboard-section"><div className="section-heading"><p className="eyebrow">Knowledge centre</p><h2>Resources and published activity</h2><p>All organization resources available to you.</p></div><div className="item-grid">{resources.map((item, index) => <article className="dashboard-card" key={item.id || `${item.title}-${index}`}><p className="eyebrow">Resource</p><h3>{item.title}</h3><p>{item.description || item.content || 'Published CYP resource.'}</p>{item.fileUrl && <a className="text-link" href={item.fileUrl} target="_blank" rel="noreferrer">Open resource</a>}</article>)}</div></section>}
       {activeMenu === 'dashboard' && <div className="kpi-grid"><Kpi title="Events Attended" value={attendedCount} detail="From organization events" /><Kpi title="Published Data Read" value={publishedCount} detail="Published organization data" /><Kpi title="Community Score" value={stats.communityScore} detail={`${stats.communityServicesInitiated} services initiated`} /><Kpi title="Applications" value={applications.length} detail="Election participation" /></div>}

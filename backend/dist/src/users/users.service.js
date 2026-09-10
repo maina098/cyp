@@ -72,7 +72,17 @@ let UsersService = class UsersService {
             if (existing)
                 throw new common_1.ConflictException('Email already registered');
         }
-        return this.prisma.user.update({ where: { id: userId }, data: dto, select: this.userSelect });
+        const user = await this.prisma.user.update({ where: { id: userId }, data: dto, select: this.userSelect });
+        await this.prisma.userActivity.create({
+            data: {
+                userId,
+                email: user.email,
+                name: user.name,
+                action: 'profile_updated',
+                details: 'Member profile details were updated',
+            },
+        });
+        return user;
     }
     async changePassword(userId, dto) {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });

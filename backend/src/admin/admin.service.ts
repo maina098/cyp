@@ -69,6 +69,34 @@ export class AdminService {
     });
   }
 
+  async updateMemberEventSubmissionStatus(submissionId: string, status: string) {
+    if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
+      throw new BadRequestException('Invalid event submission status');
+    }
+
+    const submission = await this.prisma.userEventParticipation.findUnique({
+      where: { id: submissionId },
+      include: { user: true, event: true },
+    });
+    if (!submission) throw new NotFoundException('Event submission not found');
+
+    const updated = await this.prisma.userEventParticipation.update({
+      where: { id: submissionId },
+      data: { status },
+      include: { user: { select: { id: true, name: true, email: true } }, event: true },
+    });
+    await this.prisma.userActivity.create({
+      data: {
+        userId: submission.userId,
+        email: submission.user.email,
+        name: submission.user.name,
+        action: `event_submission_${status.toLowerCase()}`,
+        details: `${status} activity submission for ${submission.event.title}`,
+      },
+    });
+    return updated;
+  }
+
   async getMemberCommunityServices() {
     return this.prisma.communityService.findMany({
       include: {
@@ -309,6 +337,42 @@ export class AdminService {
     }
 
     return stats;
+  }
+
+  async getUsers() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        profileImageUrl: true,
+        phone: true,
+        county: true,
+        constituency: true,
+        bio: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: { select: { activities: true, applications: true, votes: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateUserRole(userId: string, role: string) {
+    const normalizedRole = role.toUpperCase();
+    if (!['USER', 'ADMIN'].includes(normalizedRole)) {
+      throw new BadRequestException('Role must be USER or ADMIN');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { role: normalizedRole },
+      select: { id: true, email: true, name: true, role: true },
+    });
   }
 
   // Applications Management for Admin

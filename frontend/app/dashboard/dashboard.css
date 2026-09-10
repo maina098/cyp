@@ -674,4 +674,101 @@
     align-items: flex-start;
     flex-wrap: wrap;
   }
+
+  .dashboard-layout,
+  .main-content,
+  .dashboard-section,
+  .dashboard-card,
+  .election-summary-card {
+    min-width: 0;
+  }
+
+  .header-greeting,
+  .header-greeting h1,
+  .header-greeting p,
+  .dashboard-card p,
+  .application-row span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .top-header {
+    margin-bottom: 20px;
+  }
+
+  .dashboard-card,
+  .election-summary-card,
+  .activity-section {
+    border-radius: 10px;
+  }
+
+  .dashboard-form input,
+  .dashboard-form textarea,
+  .dashboard-form select,
+  .primary-action,
+  .secondary-action {
+    min-height: 44px;
+  }
+
+  .primary-action,
+  .secondary-action {
+    width: 100%;
+  }
+
+  .application-row {
+    gap: 8px;
+  }
+
+  .election-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .election-live-panel {
+    min-width: 0;
+  }
+
+  .vote-summary {
+    order: -1;
+  }
+
+  .candidate-card {
+    min-width: 0;
+    padding: 12px !important;
+  }
+
+  .candidate-card > div:last-child {
+    min-width: 0;
+  }
+
+  .candidate-card > div:last-child > div {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .sidebar-brand {
+    padding-inline: 12px;
+  }
+
+  .brand-text {
+    font-size: 16px;
+  }
+
+  .main-content {
+    padding-inline: 10px;
+  }
+
+  .kpi-card {
+    padding: 16px;
+  }
+
+  .activity-section,
+  .dashboard-card,
+  .election-summary-card {
+    padding: 14px;
+  }
+
+  .activity-table table {
+    min-width: 500px;
+  }
 }

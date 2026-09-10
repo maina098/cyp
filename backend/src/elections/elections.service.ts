@@ -312,13 +312,22 @@ export class ElectionsService {
   }
 
   async activateDueElections(now: Date) {
-    return this.prisma.election.updateMany({
+    const due = await this.prisma.election.findMany({
       where: {
         status: 'scheduled',
         startsAt: { lte: now },
       },
+      select: { id: true },
+    });
+
+    if (!due.length) return [];
+
+    await this.prisma.election.updateMany({
+      where: { id: { in: due.map((election) => election.id) } },
       data: { status: 'active' },
     });
+
+    return this.prisma.election.findMany({ where: { id: { in: due.map((election) => election.id) } } });
   }
 
   async closeExpiredElections(now: Date) {

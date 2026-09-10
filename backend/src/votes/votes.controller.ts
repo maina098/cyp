@@ -2,6 +2,7 @@ import { Controller, Post, Get, Param, Body, UseGuards, Request } from '@nestjs/
 import { VotesService } from './votes.service';
 import { CastVoteDto } from './dto/cast-vote.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles, RolesGuard } from '../common/guards/roles.guard';
 import { ResultsGateway } from '../results/results.gateway';
 
 @Controller()
@@ -24,7 +25,8 @@ export class VotesController {
   }
 
   @Get('elections/:id/votes')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   getElectionVotes(@Param('id') electionId: string) {
     return this.votesService.getElectionVotes(electionId);
   }

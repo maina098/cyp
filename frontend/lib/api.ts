@@ -147,12 +147,12 @@ export async function signIn(emailOrUsername: string, password: string): Promise
 
     const data = await parseJsonResponse<AuthResponse>(res);
     if (!res.ok) {
-      return { message: data?.message || `Login failed (${res.status})` };
+      return { message: 'Internal server error. Please try again later.' };
     }
 
     return data || {};
-  } catch (e) {
-    return { message: 'Network error: unable to reach the backend server.' };
+  } catch {
+    return { message: 'Internal server error. Please try again later.' };
   }
 }
 
@@ -224,6 +224,17 @@ export type ElectionApplication = {
 export async function getElections(): Promise<Election[]> {
   const data = await fetchJson<Election[] | { data?: Election[] }>('/elections?limit=100');
   return Array.isArray(data) ? data : data?.data || [];
+}
+
+export function createElection(token: string, data: {
+  title: string;
+  description?: string;
+  status?: Election['status'];
+  startsAt: string;
+  endsAt: string;
+  candidates: Array<{ name: string; bio?: string }>;
+}) {
+  return authenticatedJson<Election>(token, '/elections', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function getElectionById(id: string): Promise<Election | null> {
@@ -434,6 +445,43 @@ export async function getAdminApplications(token: string, electionId?: string): 
   return authenticatedJson<{ data?: ElectionApplication[] } | ElectionApplication[]>(token, `/admin/applications${params}`).then((data) => Array.isArray(data) ? data : data?.data || []);
 }
 
+export type AdminMember = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  profileImageUrl?: string | null;
+  phone?: string | null;
+  county?: string | null;
+  constituency?: string | null;
+  bio?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count: { activities: number; applications: number; votes: number };
+};
+
+export function getAdminMembers(token: string) {
+  return authenticatedJson<AdminMember[]>(token, '/admin/users').then((data) => Array.isArray(data) ? data : []);
+}
+
+export function updateAdminMemberRole(token: string, userId: string, role: string) {
+  return authenticatedJson<{ id: string; email: string; name: string; role: string }>(token, `/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) });
+}
+
+export type AdminActivity = {
+  id: string;
+  userId: string;
+  email: string;
+  name: string;
+  action: string;
+  details?: string | null;
+  createdAt: string;
+};
+
+export function getSystemActivity(token: string, limit = 50) {
+  return authenticatedJson<{ data?: AdminActivity[] }>(token, `/admin/activity?limit=${limit}`).then((data) => data?.data || []);
+}
+
 export function approveElectionApplication(token: string, electionId: string, applicationId: string) {
   return authenticatedJson<ElectionApplication>(token, `/elections/${electionId}/applications/${applicationId}/approve`, { method: 'POST' }).then((data) => ({ success: Boolean(data), data: data || undefined }));
 }
@@ -444,6 +492,26 @@ export function rejectElectionApplication(token: string, electionId: string, app
 
 export function getAdminEvents(token: string) {
   return authenticatedJson<AdminEvent[]>(token, '/admin/events').then((data) => Array.isArray(data) ? data : []);
+}
+
+export type MemberEventSubmission = {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: string;
+  createdAt: string;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
+  user: { id: string; name: string; email: string; profileImageUrl?: string | null };
+  event: AdminEvent;
+};
+
+export function getMemberEventSubmissions(token: string) {
+  return authenticatedJson<MemberEventSubmission[]>(token, '/admin/member-submissions/events').then((data) => Array.isArray(data) ? data : []);
+}
+
+export function updateMemberEventSubmissionStatus(token: string, submissionId: string, status: string) {
+  return authenticatedJson<MemberEventSubmission>(token, `/admin/member-submissions/events/${submissionId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 }
 
 export function createAdminEvent(token: string, data: { title: string; description: string; location: string; date: string; status?: string; imageUrl?: string }) {

@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ElectionOrchestratorService } from './election-orchestrator.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles, RolesGuard } from '../common/guards/roles.guard';
 
 @Controller('elections')
 export class ElectionOrchestratorController {
@@ -127,7 +128,8 @@ export class ElectionOrchestratorController {
    * Get all applications for election with filters
    */
   @Get(':id/applications')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   getApplications(
     @Param('id') electionId: string,
     @Query() filters: { status?: string; positionId?: string; county?: string },
@@ -140,7 +142,8 @@ export class ElectionOrchestratorController {
    * Approve application and create candidate
    */
   @Post(':id/applications/:appId/approve')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   approveApplication(
     @Param('id') electionId: string,
     @Param('appId') applicationId: string,
@@ -148,6 +151,7 @@ export class ElectionOrchestratorController {
   ) {
     return this.orchestrator.approveApplicationAndCreateCandidate(
       applicationId,
+      electionId,
       req.user.id,
       req.user.role,
     );
@@ -158,13 +162,14 @@ export class ElectionOrchestratorController {
    * Reject application
    */
   @Post(':id/applications/:appId/reject')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   rejectApplication(
     @Param('id') electionId: string,
     @Param('appId') applicationId: string,
     @Request() req,
   ) {
-    return this.orchestrator.rejectApplication(applicationId, req.user.id, req.user.role);
+    return this.orchestrator.rejectApplication(applicationId, electionId, req.user.id, req.user.role);
   }
 
   /**

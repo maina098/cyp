@@ -16,6 +16,7 @@ exports.ElectionOrchestratorController = void 0;
 const common_1 = require("@nestjs/common");
 const election_orchestrator_service_1 = require("./election-orchestrator.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const roles_guard_1 = require("../common/guards/roles.guard");
 let ElectionOrchestratorController = class ElectionOrchestratorController {
     orchestrator;
     constructor(orchestrator) {
@@ -49,10 +50,10 @@ let ElectionOrchestratorController = class ElectionOrchestratorController {
         return this.orchestrator.getElectionApplications(electionId, filters);
     }
     approveApplication(electionId, applicationId, req) {
-        return this.orchestrator.approveApplicationAndCreateCandidate(applicationId, req.user.id, req.user.role);
+        return this.orchestrator.approveApplicationAndCreateCandidate(applicationId, electionId, req.user.id, req.user.role);
     }
     rejectApplication(electionId, applicationId, req) {
-        return this.orchestrator.rejectApplication(applicationId, req.user.id, req.user.role);
+        return this.orchestrator.rejectApplication(applicationId, electionId, req.user.id, req.user.role);
     }
     getSystemActivity(limit) {
         return this.orchestrator.getSystemActivity(limit ? parseInt(limit, 10) : 50);
@@ -134,7 +135,8 @@ __decorate([
 ], ElectionOrchestratorController.prototype, "getTimeline", null);
 __decorate([
     (0, common_1.Get)(':id/applications'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
@@ -143,7 +145,8 @@ __decorate([
 ], ElectionOrchestratorController.prototype, "getApplications", null);
 __decorate([
     (0, common_1.Post)(':id/applications/:appId/approve'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Param)('appId')),
     __param(2, (0, common_1.Request)()),
@@ -153,7 +156,8 @@ __decorate([
 ], ElectionOrchestratorController.prototype, "approveApplication", null);
 __decorate([
     (0, common_1.Post)(':id/applications/:appId/reject'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Param)('appId')),
     __param(2, (0, common_1.Request)()),

@@ -13,7 +13,10 @@ export class ElectionSchedulerService {
   @Cron(CronExpression.EVERY_MINUTE)
   async syncElectionStatuses() {
     const now = new Date();
-    await this.electionsService.activateDueElections(now);
+    const activatedElections = await this.electionsService.activateDueElections(now);
+    for (const election of activatedElections) {
+      this.resultsGateway.broadcastStatusChange(election);
+    }
 
     const closedElections = await this.electionsService.closeExpiredElections(now);
     for (const election of closedElections) {

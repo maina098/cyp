@@ -188,7 +188,17 @@ export declare class ElectionsService {
             };
         }[];
     }>;
-    activateDueElections(now: Date): Promise<import("@prisma/client").Prisma.BatchPayload>;
+    activateDueElections(now: Date): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: string;
+        title: string;
+        description: string | null;
+        startsAt: Date;
+        endsAt: Date;
+        createdBy: string;
+    }[]>;
     closeExpiredElections(now: Date): Promise<{
         id: string;
         status: string;

@@ -52,6 +52,7 @@ let VotesService = VotesService_1 = class VotesService {
                     data: {
                         electionId,
                         candidateId: castVoteDto.candidateId,
+                        positionId: candidate.positionId,
                         voterId,
                     },
                 });
@@ -98,20 +99,16 @@ let VotesService = VotesService_1 = class VotesService {
         catch (error) {
             if (error.code === 'P2002') {
                 this.logger.warn(`Duplicate vote attempt by user ${voterId} in election ${electionId}`);
-                throw new common_1.ConflictException('You have already voted in this election');
+                throw new common_1.ConflictException('You have already voted for this position');
             }
             this.logger.error(`Vote failed for user ${voterId}: ${error.message}`, error.stack);
             throw error;
         }
     }
     async getUserVote(electionId, voterId) {
-        return this.prisma.vote.findUnique({
-            where: {
-                electionId_voterId: {
-                    electionId,
-                    voterId,
-                },
-            },
+        return this.prisma.vote.findMany({
+            where: { electionId, voterId },
+            orderBy: { votedAt: 'asc' },
         });
     }
     async getElectionVotes(electionId, page = 1, limit = 50) {

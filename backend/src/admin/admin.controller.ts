@@ -47,6 +47,11 @@ export class AdminController {
     return this.adminService.getMemberEventSubmissions();
   }
 
+  @Patch('member-submissions/events/:submissionId/status')
+  updateMemberEventSubmissionStatus(@Param('submissionId') submissionId: string, @Body() body: { status: string }) {
+    return this.adminService.updateMemberEventSubmissionStatus(submissionId, body.status);
+  }
+
   @Get('member-submissions/community-services')
   getMemberCommunityServices() {
     return this.adminService.getMemberCommunityServices();
@@ -163,6 +168,18 @@ export class AdminController {
   @ApiOperation({ summary: 'Get user activity statistics' })
   getUserActivityStats() {
     return this.adminService.getUserActivityStats();
+  }
+
+  @Get('users')
+  @ApiOperation({ summary: 'Get registered members with profile details' })
+  getUsers() {
+    return this.adminService.getUsers();
+  }
+
+  @Patch('users/:userId/role')
+  @ApiOperation({ summary: 'Update a member role' })
+  updateUserRole(@Param('userId') userId: string, @Body() body: { role: string }) {
+    return this.adminService.updateUserRole(userId, body.role);
   }
 
   // Applications Management

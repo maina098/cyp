@@ -39,7 +39,7 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiPropertyOptional)(),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsUrl)({ protocols: ['http', 'https'], require_protocol: true }),
+    (0, class_validator_1.Matches)(/^(https?:\/\/|\/uploads\/)/i, { message: 'Profile image must be a valid URL or uploaded asset path' }),
     __metadata("design:type", String)
 ], UpdateProfileDto.prototype, "profileImageUrl", void 0);
 __decorate([
@@ -119,7 +119,7 @@ __decorate([
 ], CreateEventParticipationDto.prototype, "description", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsUrl)({ protocols: ['http', 'https'], require_protocol: true }),
+    (0, class_validator_1.Matches)(/^(https?:\/\/|\/uploads\/)/i, { message: 'Media must be a valid URL or uploaded asset path' }),
     __metadata("design:type", String)
 ], CreateEventParticipationDto.prototype, "mediaUrl", void 0);
 __decorate([
@@ -149,7 +149,7 @@ __decorate([
 ], CreateCommunityServiceDto.prototype, "description", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsUrl)({ protocols: ['http', 'https'], require_protocol: true }),
+    (0, class_validator_1.Matches)(/^(https?:\/\/|\/uploads\/)/i, { message: 'Media must be a valid URL or uploaded asset path' }),
     __metadata("design:type", String)
 ], CreateCommunityServiceDto.prototype, "mediaUrl", void 0);
 __decorate([

@@ -103,6 +103,37 @@ export declare class AdminController {
         mediaUrl: string | null;
         mediaType: string | null;
     })[]>;
+    updateMemberEventSubmissionStatus(submissionId: string, body: {
+        status: string;
+    }): Promise<{
+        user: {
+            id: string;
+            email: string;
+            name: string;
+        };
+        event: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            imageUrl: string | null;
+            status: string;
+            title: string;
+            description: string;
+            location: string;
+            date: Date;
+        };
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: string;
+        title: string;
+        description: string | null;
+        userId: string;
+        eventId: string;
+        mediaUrl: string | null;
+        mediaType: string | null;
+    }>;
     getMemberCommunityServices(): Promise<({
         user: {
             id: string;
@@ -400,6 +431,32 @@ export declare class AdminController {
             details: string | null;
             userId: string;
         }[];
+    }>;
+    getUsers(): Promise<{
+        id: string;
+        email: string;
+        name: string;
+        profileImageUrl: string | null;
+        phone: string | null;
+        county: string | null;
+        constituency: string | null;
+        bio: string | null;
+        role: string;
+        createdAt: Date;
+        updatedAt: Date;
+        _count: {
+            votes: number;
+            applications: number;
+            activities: number;
+        };
+    }[]>;
+    updateUserRole(userId: string, body: {
+        role: string;
+    }): Promise<{
+        id: string;
+        email: string;
+        name: string;
+        role: string;
     }>;
     getAllApplications(query: {
         electionId?: string;

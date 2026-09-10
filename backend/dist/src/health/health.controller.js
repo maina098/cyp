@@ -29,7 +29,7 @@ let HealthController = class HealthController {
         const diskPath = process.platform === 'win32' ? 'C:\\' : '/';
         return this.health.check([
             () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
-            () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
+            () => this.memory.checkRSS('memory_rss', 512 * 1024 * 1024),
             () => this.disk.checkStorage('disk', { thresholdPercent: 0.99, path: diskPath }),
             async () => {
                 try {
@@ -37,7 +37,7 @@ let HealthController = class HealthController {
                     return { database: { status: 'up' } };
                 }
                 catch {
-                    throw new Error('Database is unavailable');
+                    throw new common_1.ServiceUnavailableException('Database unavailable. Check the backend DATABASE_URL and Supabase project status.');
                 }
             },
         ]);
@@ -52,8 +52,13 @@ let HealthController = class HealthController {
             () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
             () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
             async () => {
-                await this.prisma.$queryRaw `SELECT 1`;
-                return { database: { status: 'up' } };
+                try {
+                    await this.prisma.$queryRaw `SELECT 1`;
+                    return { database: { status: 'up' } };
+                }
+                catch {
+                    throw new common_1.ServiceUnavailableException('Database unavailable. Check the backend DATABASE_URL and Supabase project status.');
+                }
             },
         ]);
     }

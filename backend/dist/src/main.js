@@ -15,13 +15,14 @@ const all_exceptions_filter_1 = require("./common/filters/all-exceptions.filter"
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const logger = new common_1.Logger('Bootstrap');
+    const apiOrigin = `http://localhost:${process.env.PORT ?? 3001}`;
     app.getHttpAdapter().getInstance().use('/uploads', express_1.default.static((0, path_1.join)(process.cwd(), 'uploads')));
     app.use((0, helmet_1.default)({
         contentSecurityPolicy: {
             directives: {
                 defaultSrc: ["'self'"],
                 styleSrc: ["'self'", "'unsafe-inline'"],
-                imgSrc: ["'self'", 'data:', 'https:'],
+                imgSrc: ["'self'", 'data:', 'https:', apiOrigin],
                 scriptSrc: ["'self'"],
             },
         },
@@ -39,7 +40,13 @@ async function bootstrap() {
         .map((origin) => origin.trim())
         .filter(Boolean);
     app.enableCors({
-        origin: allowedOrigins,
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+                return;
+            }
+            callback(new Error('Origin is not allowed by CORS'));
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],

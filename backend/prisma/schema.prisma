@@ -204,14 +204,16 @@ model Vote {
   id          String   @id @default(uuid())
   electionId  String
   candidateId String
+  positionId  String?
   voterId     String
   votedAt     DateTime @default(now())
 
   election  Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
   candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  position  ElectionPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
   voter     User      @relation(fields: [voterId], references: [id], onDelete: Cascade)
 
-  @@unique([electionId, voterId])
+  @@unique([electionId, positionId, voterId])
   @@index([electionId])
   @@index([voterId])
 }
@@ -244,6 +246,7 @@ model ElectionPosition {
   election     Election              @relation(fields: [electionId], references: [id], onDelete: Cascade)
   applications ElectionApplication[]
   positionCandidates Candidate[]
+  votes             Vote[]
 
   @@unique([electionId, title])
   @@index([electionId])

@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, MemoryHealthIndicator, DiskHealthIndicator } from '@nestjs/terminus';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../prisma.service';
@@ -22,8 +22,8 @@ export class HealthController {
     return this.health.check([
       // Check if heap memory is under 150MB
       () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
-      // Check if RSS memory is under 150MB
-      () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
+      // Allow normal NestJS, Prisma, and development watcher overhead.
+      () => this.memory.checkRSS('memory_rss', 512 * 1024 * 1024),
       // Fail only when more than 99% of the disk is used.
       () => this.disk.checkStorage('disk', { thresholdPercent: 0.99, path: diskPath }),
       async () => {
@@ -31,7 +31,9 @@ export class HealthController {
           await this.prisma.$queryRaw`SELECT 1`;
           return { database: { status: 'up' } };
         } catch {
-          throw new Error('Database is unavailable');
+          throw new ServiceUnavailableException(
+            'Database unavailable. Check the backend DATABASE_URL and Supabase project status.',
+          );
         }
       },
     ]);
@@ -54,8 +56,14 @@ export class HealthController {
       () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
       () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
       async () => {
-        await this.prisma.$queryRaw`SELECT 1`;
-        return { database: { status: 'up' } };
+        try {
+          await this.prisma.$queryRaw`SELECT 1`;
+          return { database: { status: 'up' } };
+        } catch {
+          throw new ServiceUnavailableException(
+            'Database unavailable. Check the backend DATABASE_URL and Supabase project status.',
+          );
+        }
       },
     ]);
   }
