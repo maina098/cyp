@@ -44,7 +44,7 @@ let AdminService = AdminService_1 = class AdminService {
         };
     }
     async createNews(data) {
-        return this.prisma.news.create({ data: { ...data, published: false } });
+        return this.prisma.news.create({ data: { ...data, published: data.published ?? true } });
     }
     async updateNews(id, data) {
         const item = await this.prisma.news.findUnique({ where: { id } });
@@ -172,8 +172,8 @@ let AdminService = AdminService_1 = class AdminService {
         const election = await this.prisma.election.findUnique({ where: { id: electionId } });
         if (!election)
             throw new common_1.NotFoundException('Election not found');
-        if (!['draft', 'scheduled'].includes(election.status)) {
-            throw new common_1.BadRequestException('Applications can only be opened for draft or scheduled elections');
+        if (!['draft', 'scheduled', 'active'].includes(election.status)) {
+            throw new common_1.BadRequestException('Applications can only be opened for draft, scheduled, or active elections');
         }
         const position = await this.prisma.electionPosition.findUnique({
             where: { id: positionId },

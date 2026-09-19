@@ -19,6 +19,12 @@ model User {
   constituency   String?
   bio            String?
   role           String     @default("USER") // USER, ADMIN
+  emailVerifiedAt DateTime?
+  emailVerificationTokenHash String? @unique
+  emailVerificationExpiresAt DateTime?
+  passwordResetTokenHash String? @unique
+  passwordResetExpiresAt DateTime?
+  sessionVersion Int        @default(0)
   failedAttempts Int        @default(0)
   lockedUntil    DateTime?
   createdAt      DateTime   @default(now())

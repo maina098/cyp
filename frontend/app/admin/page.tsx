@@ -3,12 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import './admin.css'
-import {
-  BlogPost,
-  createBlogPost,
-  getStoredBlogPosts,
-  persistBlogPosts,
-} from '@/lib/content-store'
+import { AdminNewsPost, createAdminNews, getAdminNews, updateAdminNews } from '@/lib/api'
 import { API_BASE } from '@/lib/api-base'
 import { WS_BASE } from '@/lib/api-base'
 import { io } from 'socket.io-client'
@@ -43,7 +38,8 @@ export default function AdminDashboard() {
   const [members, setMembers] = useState<AdminMember[]>([])
   const [activity, setActivity] = useState<AdminActivity[]>([])
   const [memberSubmissions, setMemberSubmissions] = useState<MemberEventSubmission[]>([])
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+  const [blogPosts, setBlogPosts] = useState<AdminNewsPost[]>([])
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [elections, setElections] = useState<ElectionRecord[]>([])
   const [liveApplications, setLiveApplications] = useState<ElectionApplication[]>([])
   const [applicationPositions, setApplicationPositions] = useState<ElectionPosition[]>([])
@@ -56,6 +52,7 @@ export default function AdminDashboard() {
   const [candidateName, setCandidateName] = useState('')
   const [candidateBio, setCandidateBio] = useState('')
   const [electionStatus, setElectionStatus] = useState<ElectionStatus>('open')
+  const [electionStatusMessage, setElectionStatusMessage] = useState('')
   const [electionForm, setElectionForm] = useState({ title: '', description: '', startsAt: '', endsAt: '' })
   const [blogForm, setBlogForm] = useState({
     title: '',
@@ -66,10 +63,10 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     const userData = localStorage.getItem('user')
 
-    if (!token) {
+    if (!userData) {
       router.push('/signin')
       return
     }
@@ -90,8 +87,8 @@ export default function AdminDashboard() {
 
     const loadLiveData = async () => {
       try {
-        const [electionResult, applicationResult, eventResult, resourceResult, healthResult, memberResult, activityResult, submissionResult] = await Promise.allSettled([
-          getElections(), getAdminApplications(token), getAdminEvents(token), getAdminResources(token), getSystemHealth(), getAdminMembers(token), getSystemActivity(token), getMemberEventSubmissions(token),
+        const [electionResult, applicationResult, eventResult, resourceResult, healthResult, memberResult, activityResult, submissionResult, newsResult] = await Promise.allSettled([
+          getElections(), getAdminApplications(token), getAdminEvents(token), getAdminResources(token), getSystemHealth(), getAdminMembers(token), getSystemActivity(token), getMemberEventSubmissions(token), getAdminNews(token),
         ])
         const electionData = electionResult.status === 'fulfilled' ? electionResult.value : []
         const applicationData = applicationResult.status === 'fulfilled' ? applicationResult.value : []
@@ -101,6 +98,7 @@ export default function AdminDashboard() {
         const memberData = memberResult.status === 'fulfilled' ? memberResult.value : []
         const activityData = activityResult.status === 'fulfilled' ? activityResult.value : []
         const submissionData = submissionResult.status === 'fulfilled' ? submissionResult.value : []
+        const newsData = newsResult.status === 'fulfilled' ? newsResult.value : []
         setElections(electionData as ElectionRecord[])
         setLiveApplications(applicationData)
         setEvents(eventData)
@@ -109,16 +107,13 @@ export default function AdminDashboard() {
         setMembers(memberData)
         setActivity(activityData)
         setMemberSubmissions(submissionData)
-        if (electionData[0]) {
-          setSelectedElectionId((current) => current || electionData[0].id)
-          setElectionStatus(electionData[0].status === 'active' ? 'open' : electionData[0].status === 'closed' ? 'closed' : electionData[0].status === 'scheduled' ? 'scheduled' : 'draft')
-        }
+        setBlogPosts(newsData)
+        if (electionData[0]) setSelectedElectionId((current) => current || electionData[0].id)
       } catch {
         setHealth({ ok: false, data: null })
       }
     }
 
-    setBlogPosts(getStoredBlogPosts())
     loadLiveData()
     const refreshTimer = window.setInterval(loadLiveData, 15000)
     setLoading(false)
@@ -126,7 +121,7 @@ export default function AdminDashboard() {
   }, [router])
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token || !selectedElectionId) return
     const socket = io(`${WS_BASE}/results`, { transports: ['websocket'], auth: { token } })
     const refreshElections = () => getElections().then((data) => setElections(data as ElectionRecord[]))
@@ -147,6 +142,12 @@ export default function AdminDashboard() {
   }, [selectedElectionId])
 
   useEffect(() => {
+    const selectedElection = elections.find((election) => election.id === selectedElectionId)
+    if (!selectedElection) return
+    setElectionStatus(selectedElection.status === 'active' ? 'open' : selectedElection.status)
+  }, [elections, selectedElectionId])
+
+  useEffect(() => {
     if (!selectedElectionId) {
       setApplicationPositions([])
       return
@@ -160,20 +161,21 @@ export default function AdminDashboard() {
   }), [members])
 
   const handleLogout = () => {
+    void fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' })
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     router.push('/signin')
   }
 
   const updateMemberRole = async (memberId: string, role: string) => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token) return
     const updated = await updateAdminMemberRole(token, memberId, role)
     if (updated) setMembers((current) => current.map((member) => member.id === memberId ? { ...member, role: updated.role } : member))
   }
 
   const updateApplicationStatus = async (applicationId: string, status: ElectionApplication['status']) => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token) return
     const application = liveApplications.find((item) => item.id === applicationId)
     if (!application) return
@@ -186,7 +188,7 @@ export default function AdminDashboard() {
   }
 
   const updateApplicationAccess = async (position: ElectionPosition) => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token || !selectedElectionId) return
     const result = position.isOpen
       ? await closeApplications(token, selectedElectionId, position.id)
@@ -200,14 +202,14 @@ export default function AdminDashboard() {
   }
 
   const reviewMemberSubmission = async (submissionId: string, status: 'APPROVED' | 'REJECTED') => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token) return
     const updated = await updateMemberEventSubmissionStatus(token, submissionId, status)
     if (updated) setMemberSubmissions((current) => current.map((item) => item.id === submissionId ? { ...item, status } : item))
   }
 
   const createNewElection = async () => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token || !electionForm.title || !electionForm.startsAt || !electionForm.endsAt) return
     const created = await createElection(token, { ...electionForm, status: 'draft', candidates: [] })
     if (created) {
@@ -219,7 +221,7 @@ export default function AdminDashboard() {
   }
 
   const addCandidate = async () => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token || !selectedElectionId || !candidateName.trim()) return
     const candidate = await addElectionCandidate(token, selectedElectionId, { name: candidateName, bio: candidateBio })
     if (candidate) {
@@ -230,62 +232,70 @@ export default function AdminDashboard() {
   }
 
   const removeCandidate = async (candidateId: string) => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token || !selectedElectionId) return
     const result = await deleteElectionCandidate(token, selectedElectionId, candidateId)
     if (result?.success) setElections((current) => current.map((election) => election.id === selectedElectionId ? { ...election, candidates: election.candidates.filter((candidate) => candidate.id !== candidateId) } : election))
   }
 
   const addEvent = async () => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token || !eventForm.title || !eventForm.date) return
     const created = await createAdminEvent(token, eventForm)
     if (created) { setEvents((current) => [...current, created].sort((a, b) => a.date.localeCompare(b.date))); setEventForm({ title: '', description: '', location: '', date: '', status: 'UPCOMING' }) }
   }
 
   const addResource = async () => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token || !resourceForm.title || !resourceForm.file) return
     const uploaded = await uploadAdminResource(token, resourceForm.file)
     const created = uploaded ? await createAdminResource(token, { title: resourceForm.title, description: resourceForm.description, fileUrl: uploaded.url, category: resourceForm.category }) : null
     if (created) { setResources((current) => [created, ...current]); setResourceForm({ title: '', description: '', file: null, category: 'Reports' }) }
   }
 
-  const removeEvent = async (id: string) => { const token = localStorage.getItem('token'); if (token && await deleteAdminEvent(token, id)) setEvents((current) => current.filter((item) => item.id !== id)) }
-  const removeResource = async (id: string) => { const token = localStorage.getItem('token'); if (token && await deleteAdminResource(token, id)) setResources((current) => current.filter((item) => item.id !== id)) }
+  const removeEvent = async (id: string) => { const token = 'cookie-session'; if (await deleteAdminEvent(token, id)) setEvents((current) => current.filter((item) => item.id !== id)) }
+  const removeResource = async (id: string) => { const token = 'cookie-session'; if (await deleteAdminResource(token, id)) setResources((current) => current.filter((item) => item.id !== id)) }
 
-  const handlePublishBlog = () => {
+  const handlePublishBlog = async () => {
     if (!blogForm.title.trim() || !blogForm.content.trim()) {
       return
     }
 
-    const newPost = createBlogPost({
-      title: blogForm.title.trim(),
-      summary: blogForm.summary.trim() || blogForm.content.trim().slice(0, 140),
-      content: blogForm.content.trim(),
-      category: blogForm.category,
-      author: blogForm.author.trim() || 'Admin Team',
-    })
-
-    const updatedPosts = [newPost, ...blogPosts]
-    setBlogPosts(updatedPosts)
-    persistBlogPosts(updatedPosts)
+    const title = blogForm.title.trim()
+    const summary = blogForm.summary.trim() || blogForm.content.trim().slice(0, 140)
+    const data = { title, summary, content: blogForm.content.trim(), category: blogForm.category, published: true }
+    const token = 'cookie-session'
+    const saved = editingPostId
+      ? await updateAdminNews(token, editingPostId, data)
+      : await createAdminNews(token, { ...data, slug: `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now()}` })
+    if (!saved) return
+    setBlogPosts((current) => editingPostId ? current.map((post) => post.id === saved.id ? saved : post) : [saved, ...current])
+    setEditingPostId(null)
     setBlogForm({ title: '', summary: '', content: '', category: 'News', author: 'Admin Team' })
+  }
+
+  const editBlogPost = (post: AdminNewsPost) => {
+    setEditingPostId(post.id)
+    setBlogForm({ title: post.title, summary: post.summary || '', content: post.content || '', category: post.category || 'News', author: post.author || 'Admin Team' })
     setActiveMenu('news')
   }
 
   const handleElectionAction = async (nextStatus: ElectionStatus) => {
     if (!selectedElectionId) return
 
-    setElectionStatus(nextStatus)
-    const token = localStorage.getItem('token')
+    setElectionStatusMessage('')
+    const token = 'cookie-session'
     if (!token) return
 
     try {
       const updated = await transitionElectionStatus(token, selectedElectionId, nextStatus === 'open' ? 'active' : nextStatus)
-      if (!updated) setElectionStatus('draft')
-    } catch {
-      // ignore status sync errors
+      if (!updated) {
+        setElectionStatusMessage('The election status could not be saved. Check the election dates and try again.')
+        return
+      }
+      setElections((current) => current.map((election) => election.id === selectedElectionId ? { ...election, status: updated.status } : election))
+    } catch (error) {
+      setElectionStatusMessage(error instanceof Error ? error.message : 'The election status could not be saved.')
     }
   }
 
@@ -434,7 +444,8 @@ export default function AdminDashboard() {
             <div className="application-list">
               {liveApplications.filter((application) => !selectedElectionId || application.electionId === selectedElectionId).map((application) => (
                 <div key={application.id} className="application-card">
-                  <div className="application-meta"><strong>{application.name}</strong><span>{application.email}</span></div>
+                  <div className="application-meta"><strong>{application.position?.title || 'Position unavailable'}</strong><span>{application.name} · {application.email}</span></div>
+                  <p className="muted-text">Applicant: {application.name} · {application.county || 'County not provided'}{application.constituency ? `, ${application.constituency}` : ''}</p>
                   <p>{application.description}</p>
                   <div className="application-footer">
                     <span className={`status-pill ${application.status}`}>{application.status}</span>
@@ -498,14 +509,15 @@ export default function AdminDashboard() {
 
         {activeMenu === 'news' && (
           <div className="panel-card">
-            <div className="panel-header"><h2>Publish Blog / Update Frontend</h2><span>Live sync to public site</span></div>
+            <div className="panel-header"><h2>{editingPostId ? 'Edit Media Center Post' : 'Publish Blog / Update Frontend'}</h2><span>Live sync to public site</span></div>
             <div className="blog-editor">
               <div className="field-row"><label>Title<input value={blogForm.title} onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })} placeholder="Headline or title" /></label></div>
               <div className="field-row"><label>Summary<textarea value={blogForm.summary} onChange={(e) => setBlogForm({ ...blogForm, summary: e.target.value })} placeholder="Short summary for the homepage and cards" /></label></div>
               <div className="field-row"><label>Category<select value={blogForm.category} onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}><option>News</option><option>Announcement</option><option>Insight</option><option>Editorial</option></select></label></div>
               <div className="field-row"><label>Author<input value={blogForm.author} onChange={(e) => setBlogForm({ ...blogForm, author: e.target.value })} placeholder="Author name" /></label></div>
               <div className="field-row"><label>Content<textarea value={blogForm.content} onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })} placeholder="Full article content" rows={8} /></label></div>
-              <button className="publish-btn" onClick={handlePublishBlog}>Publish to frontend</button>
+              <button className="publish-btn" onClick={handlePublishBlog}>{editingPostId ? 'Save changes' : 'Publish to frontend'}</button>
+              {editingPostId && <button className="toggle-btn" onClick={() => { setEditingPostId(null); setBlogForm({ title: '', summary: '', content: '', category: 'News', author: 'Admin Team' }) }}>Cancel edit</button>}
             </div>
 
             <div className="published-posts">
@@ -514,7 +526,8 @@ export default function AdminDashboard() {
                 <article key={post.id} className="post-card">
                   <div className="post-head"><strong>{post.title}</strong><span>{post.category}</span></div>
                   <p>{post.summary}</p>
-                  <small>{post.author} · {post.publishedAt}</small>
+                  <small>{post.author || 'Admin Team'} · {post.publishedAt}</small>
+                  <button className="toggle-btn" onClick={() => editBlogPost(post)}>Edit post</button>
                 </article>
               ))}
             </div>
@@ -548,6 +561,7 @@ export default function AdminDashboard() {
               <div className="election-status-box">
                 <span className="status-label">Current state</span>
                 <strong className="status-value">{electionStatus}</strong>
+                {electionStatusMessage && <p className="inline-message">{electionStatusMessage}</p>}
               </div>
               <div className="toggle-row">
                 <button className={electionStatus === 'draft' ? 'toggle-btn active' : 'toggle-btn'} onClick={() => handleElectionAction('draft')}>Draft</button>

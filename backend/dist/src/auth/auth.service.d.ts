@@ -2,11 +2,13 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { EmailService } from './email.service';
 export declare class AuthService {
     private prisma;
     private jwtService;
+    private emailService;
     private readonly logger;
-    constructor(prisma: PrismaService, jwtService: JwtService);
+    constructor(prisma: PrismaService, jwtService: JwtService, emailService: EmailService);
     login(loginDto: LoginDto): Promise<{
         access_token: string;
         user: {
@@ -17,12 +19,18 @@ export declare class AuthService {
         };
     }>;
     register(registerDto: RegisterDto): Promise<{
-        access_token: string;
-        user: {
-            id: string;
-            email: string;
-            name: string;
-            role: string;
-        };
+        message: string;
     }>;
+    verifyEmail(token: string): Promise<{
+        message: string;
+    }>;
+    requestPasswordReset(emailInput: string): Promise<{
+        message: string;
+    }>;
+    resetPassword(token: string, password: string): Promise<{
+        message: string;
+    }>;
+    private normalizeEmail;
+    private createToken;
+    private hashToken;
 }

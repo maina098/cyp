@@ -13,10 +13,12 @@ export class WsJwtGuard implements CanActivate {
     const client: Socket = context.switchToWs().getClient<Socket>();
     
     // Extract token from handshake auth or headers
-    const token =
-      client.handshake.auth?.token ||
-      client.handshake.headers?.authorization?.replace('Bearer ', '') ||
-      client.handshake.query?.token as string;
+    const cookieToken = client.handshake.headers.cookie
+      ?.split(';')
+      .map((value) => value.trim())
+      .find((value) => value.startsWith('cyp_session='))
+      ?.slice('cyp_session='.length);
+    const token = cookieToken;
 
     if (!token) {
       this.logger.warn(`WebSocket connection rejected: missing token from ${client.id}`);

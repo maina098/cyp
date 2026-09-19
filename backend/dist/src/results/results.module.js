@@ -17,8 +17,8 @@ exports.ResultsModule = ResultsModule = __decorate([
     (0, common_1.Module)({
         imports: [
             jwt_1.JwtModule.register({
-                secret: process.env.JWT_SECRET || 'jkp_secret_key_2026',
-                signOptions: { expiresIn: '1d' },
+                secret: process.env.JWT_SECRET,
+                signOptions: { expiresIn: Number(process.env.JWT_EXPIRES_IN_SECONDS || 900) },
             }),
         ],
         providers: [results_gateway_1.ResultsGateway],

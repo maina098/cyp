@@ -35,8 +35,8 @@ export class AdminService {
     };
   }
 
-  async createNews(data: { title: string; slug: string; summary: string; content: string; category: string; imageUrl?: string }) {
-    return this.prisma.news.create({ data: { ...data, published: false } });
+  async createNews(data: { title: string; slug: string; summary: string; content: string; category: string; imageUrl?: string; published?: boolean }) {
+    return this.prisma.news.create({ data: { ...data, published: data.published ?? true } });
   }
 
   async updateNews(id: string, data: Partial<{ title: string; slug: string; summary: string; content: string; category: string; imageUrl: string; published: boolean }>) {
@@ -185,8 +185,8 @@ export class AdminService {
   async openPosition(electionId: string, positionId: string) {
     const election = await this.prisma.election.findUnique({ where: { id: electionId } });
     if (!election) throw new NotFoundException('Election not found');
-    if (!['draft', 'scheduled'].includes(election.status)) {
-      throw new BadRequestException('Applications can only be opened for draft or scheduled elections');
+    if (!['draft', 'scheduled', 'active'].includes(election.status)) {
+      throw new BadRequestException('Applications can only be opened for draft, scheduled, or active elections');
     }
 
     const position = await this.prisma.electionPosition.findUnique({

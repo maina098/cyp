@@ -54,7 +54,8 @@ let PositionsController = class PositionsController {
 exports.PositionsController = PositionsController;
 __decorate([
     (0, common_1.Get)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Query)('electionId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -62,7 +63,8 @@ __decorate([
 ], PositionsController.prototype, "getPositions", null);
 __decorate([
     (0, common_1.Get)('election/:electionId'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Param)('electionId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -94,7 +96,8 @@ __decorate([
 ], PositionsController.prototype, "updatePositionStatus", null);
 __decorate([
     (0, common_1.Get)('stats/:electionId'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Param)('electionId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

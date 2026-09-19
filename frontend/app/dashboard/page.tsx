@@ -43,9 +43,9 @@ export default function UserDashboard() {
   const [applicationMessage, setApplicationMessage] = useState('')
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     const storedMember = localStorage.getItem('user')
-    if (!token) { router.replace('/signin'); return }
+    if (!storedMember) { router.replace('/signin'); return }
     let parsed: Member | null = null
     try {
       parsed = storedMember ? JSON.parse(storedMember) : null
@@ -66,12 +66,15 @@ export default function UserDashboard() {
         setEvents((dashboard.events || []).map((item) => ({ ...item.event, title: item.title || item.event.title, description: item.description || item.event.description, participationStatus: item.status, mediaUrl: item.mediaUrl })))
         setElections(dashboard.elections || [])
         setApplications((dashboard.elections || []).flatMap((election: any) => election.applications || []))
-        const currentTime = Date.now()
         const openElection = (dashboard.elections || []).find((election: any) => {
-          const withinApplicationWindow = currentTime >= new Date(election.startsAt).getTime() && currentTime <= new Date(election.endsAt).getTime()
-          return (election.status === 'active' || election.status === 'scheduled') && withinApplicationWindow
+          return (election.status === 'active' || election.status === 'scheduled') && election.positions?.some((position: ElectionPosition) => position.isOpen)
         })
-        if (openElection) setOpenPositions((await getElectionPositions(openElection.id)).filter((position) => position.isOpen))
+        if (openElection) {
+          setOpenPositions((openElection.positions || []).filter((position: ElectionPosition) => position.isOpen))
+          setApplicationForm((current) => ({ ...current, positionId: '' }))
+        } else {
+          setOpenPositions([])
+        }
         setLiveStats(null)
         setActivity((dashboard.recentActivity || []).map((item) => ({ label: item.details || item.action, date: item.createdAt, status: 'Recorded' })))
       } catch { /* The dashboard still renders useful content when optional APIs are unavailable. */ }
@@ -82,11 +85,11 @@ export default function UserDashboard() {
     return () => window.clearInterval(refreshTimer)
   }, [router])
 
-  const logout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); router.replace('/signin') }
+  const logout = () => { void fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' }); localStorage.removeItem('token'); localStorage.removeItem('user'); router.replace('/signin') }
 
   const updateProfile = async (event: FormEvent) => {
     event.preventDefault()
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token) return
     const nextMember = await updateMemberProfile(token, profileForm)
     if (nextMember) { setMember(nextMember); localStorage.setItem('user', JSON.stringify(nextMember)); setProfileMessage('Profile details saved.') }
@@ -96,7 +99,7 @@ export default function UserDashboard() {
   const uploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token) return
     const nextMember = await uploadProfilePicture(token, file)
     if (nextMember) { setMember(nextMember); setProfileMessage('Profile picture uploaded.') }
@@ -106,7 +109,7 @@ export default function UserDashboard() {
   const submitPassword = async (event: FormEvent) => {
     event.preventDefault()
     if (passwordForm.next !== passwordForm.confirm) { setProfileMessage('New passwords must match.'); return }
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     const result = token ? await changeMemberPassword(token, passwordForm.current, passwordForm.next) : null
     setProfileMessage(result?.message || 'Unable to change password.')
     if (result) setPasswordForm({ current: '', next: '', confirm: '' })
@@ -114,7 +117,7 @@ export default function UserDashboard() {
 
   const submitEvent = async (event: FormEvent) => {
     event.preventDefault()
-    const token = localStorage.getItem('token')
+    const token = 'cookie-session'
     if (!token || !eventForm.eventId) { setEventMessage('Select an organization event first.'); return }
     const uploaded = eventForm.attachment ? await uploadMemberFile(token, eventForm.attachment) : null
     const result = await submitEventParticipation(token, eventForm.eventId, { title: eventForm.title, description: eventForm.description, mediaUrl: uploaded?.url, mediaType: uploaded?.mediaType })
@@ -124,8 +127,8 @@ export default function UserDashboard() {
 
   const submitElectionApplication = async (event: FormEvent) => {
     event.preventDefault()
-    const election = elections.find((item) => item.status === 'active' || item.status === 'scheduled')
-    const token = localStorage.getItem('token')
+    const election = elections.find((item) => (item.status === 'active' || item.status === 'scheduled') && item.positions?.some((position: ElectionPosition) => position.isOpen))
+    const token = 'cookie-session'
     if (!token || !election || !applicationForm.positionId) { setApplicationMessage('Select an open position.'); return }
     const result = await submitApplication(token, applicationForm.positionId, election.id, {
       name: member?.name || '', email: member?.email || '', county: applicationForm.county || member?.county || '', constituency: applicationForm.constituency,
@@ -137,6 +140,8 @@ export default function UserDashboard() {
   }
 
   const activeElection = elections.find((election) => election.status === 'active') || elections[0]
+  const applicationElection = elections.find((election) => (election.status === 'active' || election.status === 'scheduled') && election.positions?.some((position: ElectionPosition) => position.isOpen))
+  const isElectionOpen = activeElection?.status === 'active'
   const attendedCount = stats.eventsAttended
   const publishedCount = resources.length
 
@@ -168,7 +173,7 @@ export default function UserDashboard() {
   {activeMenu === 'resources' && <section className="dashboard-section"><div className="section-heading"><p className="eyebrow">Knowledge centre</p><h2>Resources and published activity</h2><p>All organization resources available to you.</p></div><div className="item-grid">{resources.map((item, index) => <article className="dashboard-card" key={item.id || `${item.title}-${index}`}><p className="eyebrow">Resource</p><h3>{item.title}</h3><p>{item.description || item.content || 'Published CYP resource.'}</p>{item.fileUrl && <a className="text-link" href={item.fileUrl} target="_blank" rel="noreferrer">Open resource</a>}</article>)}</div></section>}
       {activeMenu === 'dashboard' && <div className="kpi-grid"><Kpi title="Events Attended" value={attendedCount} detail="From organization events" /><Kpi title="Published Data Read" value={publishedCount} detail="Published organization data" /><Kpi title="Community Score" value={stats.communityScore} detail={`${stats.communityServicesInitiated} services initiated`} /><Kpi title="Applications" value={applications.length} detail="Election participation" /></div>}
 
-            {activeMenu === 'elections' && <section className="dashboard-section"><div className="section-heading"><p className="eyebrow">Election centre</p><h2>{activeElection?.title || 'Election dates and applications'}</h2><p>{activeElection ? `${formatDate(activeElection.startsAt)} - ${formatDate(activeElection.endsAt)}` : 'No election has been scheduled yet.'}</p></div><div className="election-summary-card"><h3>Application status</h3><p>{activeElection?.status === 'active' || activeElection?.status === 'scheduled' ? 'Applications are open for the positions listed below.' : `Applications are currently ${activeElection?.status || 'closed'}.`}</p><div className="application-list">{applications.length ? applications.map((application) => <div className="application-row" key={application.id}><span>{application.position?.title || 'Election application'}</span><strong className="status-badge">{application.status}</strong></div>) : <p className="muted-text">No application submitted for this election.</p>}</div>{(activeElection?.status === 'active' || activeElection?.status === 'scheduled') && openPositions.length > 0 && <form className="dashboard-form application-form" onSubmit={submitElectionApplication}><label>Position<select required value={applicationForm.positionId} onChange={(e) => setApplicationForm({ ...applicationForm, positionId: e.target.value })}><option value="">Select an open position</option>{openPositions.map((position) => <option key={position.id} value={position.id}>{position.title}</option>)}</select></label><label>County<input required value={applicationForm.county || member?.county || ''} onChange={(e) => setApplicationForm({ ...applicationForm, county: e.target.value })} /></label><label>Constituency<input value={applicationForm.constituency} onChange={(e) => setApplicationForm({ ...applicationForm, constituency: e.target.value })} /></label><label>Age<input required type="number" min="16" max="120" value={applicationForm.age} onChange={(e) => setApplicationForm({ ...applicationForm, age: e.target.value })} /></label><label>About you<textarea required minLength={10} rows={3} value={applicationForm.description} onChange={(e) => setApplicationForm({ ...applicationForm, description: e.target.value })} /></label><label>Reason for applying<textarea rows={2} value={applicationForm.reasonForApplying} onChange={(e) => setApplicationForm({ ...applicationForm, reasonForApplying: e.target.value })} /></label><label>Change you will champion<textarea required minLength={10} rows={3} value={applicationForm.changeChampion} onChange={(e) => setApplicationForm({ ...applicationForm, changeChampion: e.target.value })} /></label><label>Comments<textarea rows={2} value={applicationForm.comments} onChange={(e) => setApplicationForm({ ...applicationForm, comments: e.target.value })} /></label><button className="primary-action">Submit application</button>{applicationMessage && <p className="inline-message">{applicationMessage}</p>}</form>}</div>{activeElection && <LiveElection election={activeElection as any} />}</section>}
+            {activeMenu === 'elections' && <section className="dashboard-section"><div className="section-heading"><p className="eyebrow">Election centre</p><h2>{applicationElection?.title || activeElection?.title || 'Election dates and applications'}</h2><p>{applicationElection ? `${formatDate(applicationElection.startsAt)} - ${formatDate(applicationElection.endsAt)}` : activeElection ? `${formatDate(activeElection.startsAt)} - ${formatDate(activeElection.endsAt)}` : 'No election has been scheduled yet.'}</p></div><div className="election-summary-card"><h3>Application status</h3><p>{applicationElection ? 'Applications are open for the positions listed below.' : `Applications are currently ${activeElection?.status || 'closed'}.`}</p><div className="application-list">{applications.length ? applications.map((application) => <div className="application-row" key={application.id}><span>{application.position?.title || 'Election application'}</span><strong className="status-badge">{application.status}</strong></div>) : <p className="muted-text">No application submitted for this election.</p>}</div>{applicationElection && openPositions.length > 0 && <form className="dashboard-form application-form" onSubmit={submitElectionApplication}><label>Position<select required value={applicationForm.positionId} onChange={(e) => setApplicationForm({ ...applicationForm, positionId: e.target.value })}><option value="">Select an open position</option>{openPositions.map((position) => <option key={position.id} value={position.id}>{position.title}</option>)}</select></label><label>County<input required value={applicationForm.county || member?.county || ''} onChange={(e) => setApplicationForm({ ...applicationForm, county: e.target.value })} /></label><label>Constituency<input value={applicationForm.constituency} onChange={(e) => setApplicationForm({ ...applicationForm, constituency: e.target.value })} /></label><label>Age<input required type="number" min="16" max="120" value={applicationForm.age} onChange={(e) => setApplicationForm({ ...applicationForm, age: e.target.value })} /></label><label>About you<textarea required minLength={10} rows={3} value={applicationForm.description} onChange={(e) => setApplicationForm({ ...applicationForm, description: e.target.value })} /></label><label>Reason for applying<textarea rows={2} value={applicationForm.reasonForApplying} onChange={(e) => setApplicationForm({ ...applicationForm, reasonForApplying: e.target.value })} /></label><label>Change you will champion<textarea required minLength={10} rows={3} value={applicationForm.changeChampion} onChange={(e) => setApplicationForm({ ...applicationForm, changeChampion: e.target.value })} /></label><label>Comments<textarea rows={2} value={applicationForm.comments} onChange={(e) => setApplicationForm({ ...applicationForm, comments: e.target.value })} /></label><button className="primary-action">Submit application</button>{applicationMessage && <p className="inline-message">{applicationMessage}</p>}</form>}</div>{activeElection && <LiveElection election={activeElection as any} />}</section>}
 
         {activeMenu === 'dashboard' && <section className="activity-section"><div className="activity-header"><div><h2>Recent Activity</h2><p>All actions recorded for your account</p></div></div><div className="activity-table"><table><thead><tr><th>Activity</th><th>Date</th><th>Status</th></tr></thead><tbody>{activity.length ? activity.map((item, index) => <tr key={`${item.label}-${index}`}><td>{item.label}</td><td>{formatDate(item.date)}</td><td><span className="status-badge">{item.status}</span></td></tr>) : <tr><td colSpan={3}>Your member activity will appear here as you participate.</td></tr>}</tbody></table></div></section>}
 

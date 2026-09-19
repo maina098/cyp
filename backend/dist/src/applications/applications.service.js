@@ -36,8 +36,7 @@ let ApplicationsService = ApplicationsService_1 = class ApplicationsService {
         if (!election) {
             throw new common_1.BadRequestException('Election not found');
         }
-        const now = new Date();
-        if (!['scheduled', 'active'].includes(election.status) || now < election.startsAt || now > election.endsAt) {
+        if (!['scheduled', 'active'].includes(election.status)) {
             throw new common_1.BadRequestException('Applications are not open for this election');
         }
         if (!position.isOpen) {

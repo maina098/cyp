@@ -11,7 +11,8 @@ export class PositionsController {
    * GET /positions - Get positions for an election (with optional query parameters)
    */
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async getPositions(@Query('electionId') electionId?: string) {
     if (!electionId) {
       throw new BadRequestException('electionId query parameter is required');
@@ -23,7 +24,8 @@ export class PositionsController {
    * GET /positions/election/:electionId - Get all positions for an election (admin)
    */
   @Get('election/:electionId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async getAllPositions(@Param('electionId') electionId: string) {
     return this.positionsService.findAll(electionId);
   }
@@ -68,7 +70,8 @@ export class PositionsController {
    * GET /positions/stats/:electionId - Get position statistics
    */
   @Get('stats/:electionId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async getStats(@Param('electionId') electionId: string) {
     return this.positionsService.getPositionStats(electionId);
   }

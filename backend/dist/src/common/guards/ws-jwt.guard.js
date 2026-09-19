@@ -21,9 +21,12 @@ let WsJwtGuard = WsJwtGuard_1 = class WsJwtGuard {
     }
     canActivate(context) {
         const client = context.switchToWs().getClient();
-        const token = client.handshake.auth?.token ||
-            client.handshake.headers?.authorization?.replace('Bearer ', '') ||
-            client.handshake.query?.token;
+        const cookieToken = client.handshake.headers.cookie
+            ?.split(';')
+            .map((value) => value.trim())
+            .find((value) => value.startsWith('cyp_session='))
+            ?.slice('cyp_session='.length);
+        const token = cookieToken;
         if (!token) {
             this.logger.warn(`WebSocket connection rejected: missing token from ${client.id}`);
             client.emit('error', { message: 'Unauthorized: Authentication required' });

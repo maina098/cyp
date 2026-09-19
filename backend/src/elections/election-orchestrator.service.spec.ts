@@ -41,7 +41,7 @@ describe('ElectionOrchestratorService', () => {
         electionPosition: { updateMany: jest.fn() },
       })),
     } as any;
-    const gateway = { broadcastStatusChange: jest.fn() };
+    const gateway = { broadcastStatusChange: jest.fn() } as any;
     const service = new ElectionOrchestratorService(prisma, gateway);
 
     await service.transitionElectionStatus('election-1', 'scheduled', 'admin-1', 'ADMIN');
@@ -51,7 +51,7 @@ describe('ElectionOrchestratorService', () => {
   });
 
   it('approves five applicants and assigns each candidate to its position ordinal', async () => {
-    const gateway = { broadcastApplicationStatusUpdate: jest.fn() };
+    const gateway = { broadcastApplicationStatusUpdate: jest.fn() } as any;
     const createdCandidates: any[] = [];
     const prisma = {
       electionApplication: {

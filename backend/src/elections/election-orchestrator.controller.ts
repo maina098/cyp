@@ -177,7 +177,8 @@ export class ElectionOrchestratorController {
    * Real-time system activity feed for admin
    */
   @Get('system/activity')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   getSystemActivity(@Query('limit') limit: string) {
     return this.orchestrator.getSystemActivity(limit ? parseInt(limit, 10) : 50);
   }

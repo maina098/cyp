@@ -45,30 +45,6 @@ export declare class PositionsController {
         maxApplicants: number;
     })[]>;
     getPosition(id: string): Promise<{
-        applications: ({
-            user: {
-                id: string;
-                email: string;
-                name: string;
-            };
-        } & {
-            comments: string | null;
-            id: string;
-            email: string;
-            name: string;
-            county: string;
-            constituency: string | null;
-            updatedAt: Date;
-            status: string;
-            description: string;
-            electionId: string;
-            userId: string;
-            positionId: string;
-            age: number | null;
-            reasonForApplying: string | null;
-            changeChampion: string | null;
-            appliedAt: Date;
-        })[];
         _count: {
             applications: number;
         };

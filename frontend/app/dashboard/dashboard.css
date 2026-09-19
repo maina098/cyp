@@ -1,13 +1,14 @@
 /* Dashboard Layout */
 :root {
-  --sidebar-bg: #1a2035;
-  --sidebar-hover: #252d45;
-  --primary-accent: #3f51b5;
-  --primary-light: #7c4dff;
-  --text-primary: #2d2d2d;
-  --text-secondary: #6c757d;
+  --sidebar-bg: #083b66;
+  --sidebar-hover: #0c4f86;
+  --primary-accent: #0d68b0;
+  --primary-light: #2f8bd4;
+  --text-primary: #12314a;
+  --text-secondary: #55718a;
   --card-bg: #ffffff;
-  --border-color: #e0e0e0;
+  --border-color: #cfe2f2;
+  --dashboard-blue: #eaf4fc;
 }
 
 * {
@@ -22,7 +23,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f5f7fa;
+  background: var(--dashboard-blue);
 }
 
 .spinner {
@@ -41,7 +42,7 @@
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--dashboard-blue);
 }
 
 /* Sidebar */
@@ -282,7 +283,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-accent), var(--primary-light));
+  background: var(--primary-accent);
   border-radius: 999px;
   transition: width 0.5s ease;
 }
@@ -770,5 +771,15 @@
 
   .activity-table table {
     min-width: 500px;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-layout {
+    overflow-x: hidden;
+  }
+
+  .main-content {
+    width: 100%;
   }
 }

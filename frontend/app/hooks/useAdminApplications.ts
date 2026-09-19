@@ -13,7 +13,7 @@ export function useAdminApplications(electionId?: string, positionId?: string) {
     const fetchApplications = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
+        const token = 'cookie-session';
         if (!token) {
           setApplications([]);
           return;
@@ -63,7 +63,7 @@ export function useAdminApplications(electionId?: string, positionId?: string) {
 
   const refetch = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = 'cookie-session';
       if (!token) return;
       const data = await getAllApplications(token, { electionId, positionId });
       setApplications(data);

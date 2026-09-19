@@ -17,10 +17,16 @@ const prisma_service_1 = require("../prisma.service");
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     prisma;
     constructor(prisma) {
+        const secret = process.env.JWT_SECRET;
+        if (!secret || secret.length < 32) {
+            throw new Error('JWT_SECRET must be configured with at least 32 characters');
+        }
         super({
-            jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
+            jwtFromRequest: passport_jwt_1.ExtractJwt.fromExtractors([
+                (request) => request?.cookies?.cyp_session || null,
+            ]),
             ignoreExpiration: false,
-            secretOrKey: process.env.JWT_SECRET || 'jkp_secret_key_2026',
+            secretOrKey: secret,
         });
         this.prisma = prisma;
     }
@@ -28,7 +34,7 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         const user = await this.prisma.user.findUnique({
             where: { id: payload.sub },
         });
-        if (!user) {
+        if (!user || (payload.ver ?? 0) !== user.sessionVersion) {
             throw new common_1.UnauthorizedException();
         }
         return { id: user.id, email: user.email, name: user.name, role: user.role || 'USER' };

@@ -18,30 +18,40 @@ const websockets_1 = require("@nestjs/websockets");
 const socket_io_1 = require("socket.io");
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
+const prisma_service_1 = require("../prisma.service");
 const MAX_CONNECTIONS = 1000;
 const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:3000,http://localhost:5173')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+const publicSiteOrigin = 'https://www.coastalyouthparliament.org';
+if (!allowedOrigins.includes(publicSiteOrigin)) {
+    allowedOrigins.push(publicSiteOrigin);
+}
 let ResultsGateway = ResultsGateway_1 = class ResultsGateway {
     jwtService;
+    prisma;
     server;
     logger = new common_1.Logger(ResultsGateway_1.name);
     connectedClients = new Map();
     totalConnections = 0;
-    constructor(jwtService) {
+    constructor(jwtService, prisma) {
         this.jwtService = jwtService;
+        this.prisma = prisma;
     }
-    handleConnection(client) {
+    async handleConnection(client) {
         if (this.totalConnections >= MAX_CONNECTIONS) {
             this.logger.warn(`Connection rejected: max connections reached (${MAX_CONNECTIONS})`);
             client.emit('error', { message: 'Server busy. Please try again later.' });
             client.disconnect();
             return;
         }
-        const token = client.handshake.auth?.token ||
-            client.handshake.headers?.authorization?.replace('Bearer ', '') ||
-            client.handshake.query?.token;
+        const cookieToken = client.handshake.headers.cookie
+            ?.split(';')
+            .map((value) => value.trim())
+            .find((value) => value.startsWith('cyp_session='))
+            ?.slice('cyp_session='.length);
+        const token = cookieToken;
         if (!token) {
             this.logger.warn(`Client ${client.id} rejected: missing token`);
             client.emit('error', { message: 'Unauthorized: Authentication required' });
@@ -50,6 +60,9 @@ let ResultsGateway = ResultsGateway_1 = class ResultsGateway {
         }
         try {
             const payload = this.jwtService.verify(token);
+            const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+            if (!user || (payload.ver ?? 0) !== user.sessionVersion)
+                throw new Error('Session revoked');
             client.data.user = payload;
             this.totalConnections++;
             this.logger.log(`Client ${client.id} connected (user: ${payload.email})`);
@@ -262,6 +275,6 @@ exports.ResultsGateway = ResultsGateway = ResultsGateway_1 = __decorate([
         namespace: '/results',
         maxHttpBufferSize: 1e6,
     }),
-    __metadata("design:paramtypes", [jwt_1.JwtService])
+    __metadata("design:paramtypes", [jwt_1.JwtService, prisma_service_1.PrismaService])
 ], ResultsGateway);
 //# sourceMappingURL=results.gateway.js.map

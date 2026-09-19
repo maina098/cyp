@@ -53,7 +53,7 @@ export default function LiveElection({ election }: { election: ElectionDetails }
   useEffect(() => {
     const socket: Socket = io(`${WS_URL}/results`, {
       transports: ['websocket'],
-      auth: { token: localStorage.getItem('token') },
+      withCredentials: true,
     });
 
     socket.emit('subscribeElection', election?.id);
@@ -78,7 +78,7 @@ export default function LiveElection({ election }: { election: ElectionDetails }
   useEffect(() => {
     const loadResults = async () => {
       try {
-        const response = await fetch(`${API_BASE}/elections/${election.id}/results`, { cache: 'no-store' });
+        const response = await fetch(`${API_BASE}/elections/${election.id}/results`, { cache: 'no-store', credentials: 'include' });
         if (!response.ok) return;
         const payload = await response.json();
         if (Array.isArray(payload)) setResults(payload);
@@ -111,16 +111,13 @@ export default function LiveElection({ election }: { election: ElectionDetails }
   }, [election.startsAt, election.endsAt, isClosed]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setMessage('Please sign in to vote.');
-      return;
-    }
+    const token = 'cookie-session';
 
     const loadVote = async () => {
       try {
         const response = await fetch(`${API_BASE}/elections/${election?.id}/my-vote`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: {},
         });
         if (response.ok) {
           const data = await response.json();
@@ -159,11 +156,7 @@ export default function LiveElection({ election }: { election: ElectionDetails }
       return;
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setMessage('Please sign in to vote.');
-      return;
-    }
+    const token = 'cookie-session';
 
     setLoading(true);
     setMessage(null);
@@ -172,7 +165,8 @@ export default function LiveElection({ election }: { election: ElectionDetails }
       for (const candidateId of selections) {
         const response = await fetch(`${API_BASE}/elections/${election?.id}/vote`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ candidateId }),
         });
         const data = await response.json().catch(() => ({}));
@@ -182,7 +176,7 @@ export default function LiveElection({ election }: { election: ElectionDetails }
       setHasVoted(true);
       setMessage('Vote recorded successfully.');
       const responseResults = await fetch(`${API_BASE}/elections/${election?.id}/results`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       if (responseResults.ok) {
         const nextData = await responseResults.json();

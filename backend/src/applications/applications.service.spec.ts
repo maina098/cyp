@@ -26,7 +26,7 @@ describe('ApplicationsService', () => {
       },
       userActivity: { create: jest.fn().mockResolvedValue({}) },
     } as any;
-    const gateway = { broadcastNewApplication: jest.fn() };
+    const gateway = { broadcastNewApplication: jest.fn() } as any;
     const service = new ApplicationsService(prisma, gateway);
 
     for (let index = 1; index <= 5; index += 1) {
@@ -45,5 +45,38 @@ describe('ApplicationsService', () => {
     expect(prisma.electionApplication.create).toHaveBeenCalledTimes(5);
     expect(gateway.broadcastNewApplication).toHaveBeenCalledTimes(5);
     expect(prisma.electionApplication.create.mock.calls.every((call: any[]) => call[0].data.status === 'pending')).toBe(true);
+  });
+
+  it('rejects applications when the election is active but the position is closed', async () => {
+    const prisma = {
+      electionPosition: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'position-1',
+          electionId: 'election-1',
+          isOpen: false,
+          maxApplicants: 100,
+        }),
+      },
+      election: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'election-1',
+          status: 'active',
+          startsAt: new Date(Date.now() - 60_000),
+          endsAt: new Date(Date.now() + 60_000),
+        }),
+      },
+    } as any;
+    const service = new ApplicationsService(prisma, {} as any);
+
+    await expect(service.create({
+      positionId: 'position-1',
+      electionId: 'election-1',
+      name: 'Applicant',
+      email: 'applicant@example.com',
+      county: 'Mombasa',
+      age: 25,
+      description: 'Ready to serve',
+      changeChampion: 'Youth participation',
+    }, 'user-1')).rejects.toThrow('This position is not currently accepting applications');
   });
 });

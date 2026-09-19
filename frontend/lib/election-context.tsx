@@ -70,11 +70,8 @@ export const ElectionContextProvider: React.FC<{ children: React.ReactNode }> = 
 
   // Initialize WebSocket connection
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     const newSocket = io(`${WS_BASE}/results`, {
-      auth: { token },
+      withCredentials: true,
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
@@ -145,9 +142,8 @@ export const ElectionContextProvider: React.FC<{ children: React.ReactNode }> = 
   const fetchElections = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/elections`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -167,9 +163,8 @@ export const ElectionContextProvider: React.FC<{ children: React.ReactNode }> = 
 
   const fetchPositions = useCallback(async (electionId: string) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/positions?electionId=${electionId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -183,9 +178,8 @@ export const ElectionContextProvider: React.FC<{ children: React.ReactNode }> = 
 
   const fetchApplications = useCallback(async (electionId: string) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/applications/mine`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -202,12 +196,11 @@ export const ElectionContextProvider: React.FC<{ children: React.ReactNode }> = 
 
   const submitApplication = useCallback(async (positionId: string, formData: any) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/applications`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           positionId,

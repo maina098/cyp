@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException, ConflictException } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { EmailService } from './email.service';
 import { PrismaService } from '../prisma.service';
 import * as bcrypt from 'bcrypt';
 
@@ -24,6 +25,8 @@ describe('AuthService', () => {
     role: 'USER',
     failedAttempts: 0,
     lockedUntil: null,
+    emailVerifiedAt: new Date(),
+    sessionVersion: 0,
   };
 
   const mockPrismaService = {
@@ -41,6 +44,10 @@ describe('AuthService', () => {
     sign: jest.fn().mockReturnValue('mock-access-token'),
     verify: jest.fn(),
   };
+  const mockEmailService = {
+    sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -53,6 +60,10 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: EmailService,
+          useValue: mockEmailService,
         },
       ],
     }).compile();
@@ -151,8 +162,8 @@ describe('AuthService', () => {
         username: 'NewUser',
       });
 
-      expect(result.access_token).toBeDefined();
-      expect(result.user.email).toBe('newuser@example.com');
+      expect(result.message).toContain('verify your account');
+      expect(mockEmailService.sendVerificationEmail).toHaveBeenCalled();
     });
 
     it('should throw ConflictException for existing email', async () => {

@@ -75,11 +75,10 @@ export const useElectionDashboard = (electionId: string) => {
   const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const response = await fetch(
         `${API_BASE}/elections/${electionId}/dashboard-stats`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         },
       );
 
@@ -111,7 +110,6 @@ export const useElectionApplications = (electionId: string, filters?: any) => {
   const fetchApplications = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const query = new URLSearchParams();
 
       if (filters?.status) query.append('status', filters.status);
@@ -121,7 +119,7 @@ export const useElectionApplications = (electionId: string, filters?: any) => {
       const response = await fetch(
         `${API_BASE}/elections/${electionId}/applications?${query}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         },
       );
 
@@ -153,12 +151,11 @@ export const useApproveApplication = () => {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
       const response = await fetch(
         `${API_BASE}/elections/${electionId}/applications/${applicationId}/approve`,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         },
       );
 
@@ -188,12 +185,11 @@ export const useRejectApplication = () => {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
       const response = await fetch(
         `${API_BASE}/elections/${electionId}/applications/${applicationId}/reject`,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         },
       );
 
@@ -236,14 +232,13 @@ export const useOpenPositions = () => {
       try {
         setLoading(true);
         setError(null);
-        const token = localStorage.getItem('token');
         const response = await fetch(
           `${API_BASE}/elections/${electionId}/open-positions`,
           {
             method: 'POST',
+            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ positionIds }),
           },
@@ -278,14 +273,13 @@ export const useClosePositions = () => {
       try {
         setLoading(true);
         setError(null);
-        const token = localStorage.getItem('token');
         const response = await fetch(
           `${API_BASE}/elections/${electionId}/close-positions`,
           {
             method: 'POST',
+            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ positionIds }),
           },

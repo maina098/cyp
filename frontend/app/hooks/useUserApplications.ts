@@ -10,7 +10,7 @@ export function useUserApplications() {
     const fetchApplications = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
+        const token = 'cookie-session';
         if (!token) {
           setApplications([]);
           return;
@@ -29,7 +29,7 @@ export function useUserApplications() {
 
   const refetch = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = 'cookie-session';
       if (!token) return;
       const data = await getUserApplications(token);
       setApplications(data);

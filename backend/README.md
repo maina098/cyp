@@ -17,6 +17,10 @@ frontend/  Next.js member, admin, public, and election interfaces
 - Password hashing with bcrypt.
 - Role-aware access control for `ADMIN` and regular members.
 - Protected member and admin routes.
+- Email verification is required for new accounts.
+- Password reset links are single-use, hashed at rest, and expire after 30 minutes.
+- Access tokens expire after 15 minutes by default and password changes revoke existing sessions.
+- Login endpoints use global and route-specific throttling plus account lockout controls.
 - Profile editing, profile-picture upload, password changes, and logout.
 - Admin-only application moderation, position management, and election administration.
 
@@ -53,6 +57,18 @@ frontend/  Next.js member, admin, public, and election interfaces
 - Candidate/member roster management with add and delete actions.
 - Candidates with recorded votes cannot be deleted.
 - Responsive mobile hamburger dropdown navigation.
+
+## Required authentication environment
+
+Set these values in the backend deployment environment before starting the API:
+
+- `JWT_SECRET`: random secret of at least 32 characters; never commit or expose it to the frontend.
+- `JWT_EXPIRES_IN_SECONDS`: optional access-token lifetime, default `900`.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, and `MAIL_FROM`: required for verification and reset email delivery.
+- `FRONTEND_URL`: frontend origin used in verification and reset links.
+- `COOKIE_SAME_SITE`: use `none` when the deployed frontend and API are on different sites; this also requires HTTPS.
+
+After deploying, run `npm run db:migrate` from `backend` to apply the authentication migration.
 
 ### Election lifecycle
 

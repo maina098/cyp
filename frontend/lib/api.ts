@@ -62,7 +62,8 @@ async function authenticatedJson<T>(token: string, path: string, init: RequestIn
   try {
     const response = await fetch(`${API_BASE}${path}`, {
       ...init,
-      headers: { ...(init.headers || {}), Authorization: `Bearer ${token}`, ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
+      credentials: 'include',
+      headers: { ...(init.headers || {}), ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
       cache: 'no-store',
     });
     return response.ok ? response.json() : null;
@@ -73,6 +74,10 @@ async function authenticatedJson<T>(token: string, path: string, init: RequestIn
 
 export function getMemberDashboard(token: string) {
   return authenticatedJson<MemberDashboard>(token, '/users/me/dashboard');
+}
+
+export function logoutSession() {
+  return fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
 }
 
 export function updateMemberProfile(token: string, data: Record<string, string>) {
@@ -87,7 +92,7 @@ export async function uploadMemberFile(token: string, file: File) {
   const formData = new FormData();
   formData.append('file', file);
   try {
-    const response = await fetch(`${API_BASE}/users/me/uploads`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
+    const response = await fetch(`${API_BASE}/users/me/uploads`, { method: 'POST', credentials: 'include', body: formData });
     return response.ok ? response.json() as Promise<{ url: string; mediaType: string }> : null;
   } catch {
     return null;
@@ -97,7 +102,7 @@ export async function uploadMemberFile(token: string, file: File) {
 export function uploadProfilePicture(token: string, file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  return fetch(`${API_BASE}/users/me/profile-picture`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }).then((response) => response.ok ? response.json() : null).catch(() => null);
+  return fetch(`${API_BASE}/users/me/profile-picture`, { method: 'POST', credentials: 'include', body: formData }).then((response) => response.ok ? response.json() : null).catch(() => null);
 }
 
 export function submitEventParticipation(token: string, eventId: string, data: { title: string; description?: string; mediaUrl?: string; mediaType?: string }) {
@@ -125,6 +130,21 @@ export async function getNews(): Promise<ContentItem[]> {
   return Array.isArray(data) ? data : [];
 }
 
+export type AdminNewsPost = ContentItem & { slug: string; published: boolean; author?: string; createdAt?: string };
+
+export async function getAdminNews(token: string): Promise<AdminNewsPost[]> {
+  const response = await authenticatedJson<{ data?: AdminNewsPost[] }>(token, '/admin/news');
+  return response?.data || [];
+}
+
+export function createAdminNews(token: string, data: { title: string; slug: string; summary: string; content: string; category: string; published: boolean }) {
+  return authenticatedJson<AdminNewsPost>(token, '/admin/news', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export function updateAdminNews(token: string, id: string, data: Partial<{ title: string; slug: string; summary: string; content: string; category: string; published: boolean }>) {
+  return authenticatedJson<AdminNewsPost>(token, `/admin/news/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
 export async function getEvents(): Promise<ContentItem[]> {
   const data = await fetchJson<ContentItem[]>('/content/events');
   return Array.isArray(data) ? data : [];
@@ -141,18 +161,19 @@ export async function signIn(emailOrUsername: string, password: string): Promise
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: emailOrUsername, password }),
     });
 
     const data = await parseJsonResponse<AuthResponse>(res);
     if (!res.ok) {
-      return { message: 'Internal server error. Please try again later.' };
+      return { message: data?.message || `Login failed (${res.status})` };
     }
 
     return data || {};
   } catch {
-    return { message: 'Internal server error. Please try again later.' };
+    return { message: 'Network error: unable to reach the backend server.' };
   }
 }
 
@@ -160,6 +181,7 @@ export async function signUp(username: string, email: string, password: string):
   try {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, email, password }),
     });
@@ -172,6 +194,47 @@ export async function signUp(username: string, email: string, password: string):
     return data || {};
   } catch (e) {
     return { message: 'Network error: unable to reach the backend server.' };
+  }
+}
+
+export async function requestPasswordReset(email: string) {
+  try {
+    const response = await fetch(`${API_BASE}/auth/password-reset/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    return await parseJsonResponse<{ message?: string }>(response) || {};
+  } catch {
+    return { message: 'If an account exists for that email, password reset instructions have been sent.' };
+  }
+}
+
+export async function resetPassword(token: string, password: string) {
+  try {
+    const response = await fetch(`${API_BASE}/auth/password-reset/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    });
+    const data = await parseJsonResponse<{ message?: string }>(response);
+    return response.ok ? data : { message: data?.message || 'Unable to reset password.' };
+  } catch {
+    return { message: 'Unable to reset password.' };
+  }
+}
+
+export async function verifyEmail(token: string) {
+  try {
+    const response = await fetch(`${API_BASE}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    const data = await parseJsonResponse<{ message?: string }>(response);
+    return response.ok ? data : { message: data?.message || 'Unable to verify email.' };
+  } catch {
+    return { message: 'Unable to verify email.' };
   }
 }
 
@@ -247,7 +310,17 @@ export async function getElectionPositions(electionId: string): Promise<Election
 }
 
 export function transitionElectionStatus(token: string, electionId: string, status: Election['status']) {
-  return authenticatedJson<Election>(token, `/elections/${electionId}/transition-status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+  return fetch(`${API_BASE}/elections/${electionId}/transition-status`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+    cache: 'no-store',
+  }).then(async (response) => {
+    const payload = await parseJsonResponse<Election & { message?: string }>(response);
+    if (!response.ok) throw new Error(payload?.message || `Unable to update election status (${response.status})`);
+    return payload;
+  });
 }
 
 export function addElectionCandidate(token: string, electionId: string, data: { name: string; bio?: string; position?: number; positionId?: string }) {
@@ -441,8 +514,22 @@ export type AdminEvent = ContentItem & { date: string; status: string; imageUrl?
 export type AdminResource = ContentItem & { fileUrl: string; downloadsCount?: number };
 
 export async function getAdminApplications(token: string, electionId?: string): Promise<ElectionApplication[]> {
-  const params = electionId ? `?electionId=${encodeURIComponent(electionId)}&limit=100` : '?limit=100';
-  return authenticatedJson<{ data?: ElectionApplication[] } | ElectionApplication[]>(token, `/admin/applications${params}`).then((data) => Array.isArray(data) ? data : data?.data || []);
+  const baseParams = new URLSearchParams({ limit: '100' });
+  if (electionId) baseParams.set('electionId', electionId);
+  const firstPage = await authenticatedJson<{ data?: ElectionApplication[]; meta?: { totalPages?: number } } | ElectionApplication[]>(token, `/admin/applications?${baseParams.toString()}`);
+  if (!firstPage) return [];
+  if (Array.isArray(firstPage)) return firstPage;
+
+  const applications = firstPage.data || [];
+  const totalPages = firstPage.meta?.totalPages || 1;
+  if (totalPages <= 1) return applications;
+
+  const remainingPages = await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) => {
+    const params = new URLSearchParams(baseParams);
+    params.set('page', String(index + 2));
+    return authenticatedJson<{ data?: ElectionApplication[] }>(token, `/admin/applications?${params.toString()}`);
+  }));
+  return applications.concat(...remainingPages.map((page) => page?.data || []));
 }
 
 export type AdminMember = {
@@ -534,7 +621,7 @@ export async function uploadAdminResource(token: string, file: File) {
   const formData = new FormData();
   formData.append('file', file);
   try {
-    const response = await fetch(`${API_BASE}/admin/resources/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
+    const response = await fetch(`${API_BASE}/admin/resources/upload`, { method: 'POST', credentials: 'include', body: formData });
     return response.ok ? response.json() as Promise<{ url: string }> : null;
   } catch {
     return null;

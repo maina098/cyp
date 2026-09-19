@@ -10,27 +10,52 @@ async function main() {
   console.log('Seeding database...');
 
   // 1. Seed Admin User
-  const adminEmail = 'dullacyp@gmail.com';
-  const passwordHash = await bcrypt.hash('cyp@123', 12);
+  const adminEmail = 'kibwanacyp@gmail.com';
+  const passwordHash = await bcrypt.hash('Kibwana@8084', 12);
   await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
-      name: 'CYP Administrator',
+      name: 'Kibwana',
       passwordHash,
       role: 'ADMIN',
       failedAttempts: 0,
       lockedUntil: null,
+      emailVerifiedAt: new Date(),
     },
     create: {
       email: adminEmail,
-      name: 'CYP Administrator',
+      name: 'Kibwana',
       passwordHash,
       role: 'ADMIN',
+      emailVerifiedAt: new Date(),
     },
   });
-  console.log('Admin user seeded (dullacyp@gmail.com / cyp@123)');
+  console.log('Admin user seeded (kibwanacyp@gmail.com)');
 
-  // 2. Seed Governors
+  // 2. Seed verified dashboard user
+  const userEmail = 'malomoanderson@gmail.com';
+  const userPasswordHash = await bcrypt.hash('maina@8084.1', 12);
+  await prisma.user.upsert({
+    where: { email: userEmail },
+    update: {
+      name: 'Malomo Anderson',
+      passwordHash: userPasswordHash,
+      role: 'USER',
+      failedAttempts: 0,
+      lockedUntil: null,
+      emailVerifiedAt: new Date(),
+    },
+    create: {
+      email: userEmail,
+      name: 'Malomo Anderson',
+      passwordHash: userPasswordHash,
+      role: 'USER',
+      emailVerifiedAt: new Date(),
+    },
+  });
+  console.log('Verified user seeded (malomoanderson@gmail.com)');
+
+  // 3. Seed Governors
   const governors = [
     {
       name: 'H.E. Abdulswamad Shariff Nassir',

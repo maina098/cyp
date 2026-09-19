@@ -1,14 +1,14 @@
 /* Admin Dashboard Styles - Material Dash Theme */
 :root {
-  --admin-sidebar-bg: #1a2035;
-  --admin-sidebar-hover: #252d45;
-  --admin-primary: #3f51b5;
-  --admin-primary-light: #7c4dff;
-  --admin-text-primary: #2d2d2d;
-  --admin-text-secondary: #6c757d;
+  --admin-sidebar-bg: #083b66;
+  --admin-sidebar-hover: #0c4f86;
+  --admin-primary: #0d68b0;
+  --admin-primary-light: #2f8bd4;
+  --admin-text-primary: #12314a;
+  --admin-text-secondary: #55718a;
   --admin-card-bg: #ffffff;
-  --admin-border: #e0e0e0;
-  --admin-bg: #f5f7fa;
+  --admin-border: #cfe2f2;
+  --admin-bg: #eaf4fc;
 }
 
 * {
@@ -285,7 +285,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--admin-primary), var(--admin-primary-light));
+  background: var(--admin-primary);
   border-radius: 999px;
   transition: width 0.5s ease;
 }
@@ -1002,6 +1002,16 @@
   .activity-table table,
   .table-wrap table {
     min-width: 500px;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-layout {
+    overflow-x: hidden;
+  }
+
+  .admin-main {
+    width: 100%;
   }
 }
   .action-cell {

@@ -53,7 +53,7 @@ export class UsersService {
     if (!user || !(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
       throw new UnauthorizedException('Current password is incorrect');
     }
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(dto.newPassword, 12) } });
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(dto.newPassword, 12), sessionVersion: { increment: 1 } } });
     return { message: 'Password changed successfully' };
   }
 

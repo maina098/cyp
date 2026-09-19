@@ -1,14 +1,16 @@
 import { OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma.service';
 export declare class ResultsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private jwtService;
+    private prisma;
     server: Server;
     private readonly logger;
     private connectedClients;
     private totalConnections;
-    constructor(jwtService: JwtService);
-    handleConnection(client: Socket): void;
+    constructor(jwtService: JwtService, prisma: PrismaService);
+    handleConnection(client: Socket): Promise<void>;
     handleDisconnect(client: Socket): void;
     handleSubscribe(electionId: string, client: Socket): {
         ok: boolean;

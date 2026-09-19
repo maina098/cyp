@@ -48,25 +48,34 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../prisma.service");
 const bcrypt = __importStar(require("bcrypt"));
+const crypto_1 = require("crypto");
+const email_service_1 = require("./email.service");
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
+const EMAIL_VERIFICATION_HOURS = 24;
+const PASSWORD_RESET_MINUTES = 30;
+const DUMMY_PASSWORD_HASH = '$2b$12$7QJ8Q3x5q9Gf8f3mQq6xUu8nYp2sJ5Lr9vT2xK4mN6pR8sC1dE3fG';
 let AuthService = AuthService_1 = class AuthService {
     prisma;
     jwtService;
+    emailService;
     logger = new common_1.Logger(AuthService_1.name);
-    constructor(prisma, jwtService) {
+    constructor(prisma, jwtService, emailService) {
         this.prisma = prisma;
         this.jwtService = jwtService;
+        this.emailService = emailService;
     }
     async login(loginDto) {
+        const email = this.normalizeEmail(loginDto.email);
         const user = await this.prisma.user.findUnique({
-            where: { email: loginDto.email },
+            where: { email },
         });
         if (!user) {
+            await bcrypt.compare(loginDto.password, DUMMY_PASSWORD_HASH);
             throw new common_1.UnauthorizedException('Invalid email or password');
         }
         if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-            this.logger.warn(`Login attempt for locked account: ${loginDto.email}`);
+            this.logger.warn(`Login attempt for locked account: ${email}`);
             throw new common_1.UnauthorizedException('Invalid email or password');
         }
         const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
@@ -82,11 +91,12 @@ let AuthService = AuthService_1 = class AuthService {
                     lockedUntil: lockUntil,
                 },
             });
-            if (lockUntil) {
-                this.logger.warn(`Account locked for user ${user.email} due to ${failedAttempts} failed attempts`);
-                throw new common_1.UnauthorizedException(`Account locked due to too many failed attempts. Try again in ${LOCKOUT_DURATION_MINUTES} minutes.`);
-            }
-            throw new common_1.UnauthorizedException('Invalid credentials');
+            if (lockUntil)
+                this.logger.warn(`Account lockout triggered for ${user.email}`);
+            throw new common_1.UnauthorizedException('Invalid email or password');
+        }
+        if (!user.emailVerifiedAt) {
+            throw new common_1.UnauthorizedException('Please verify your email before signing in');
         }
         await this.prisma.user.update({
             where: { id: user.id },
@@ -104,7 +114,7 @@ let AuthService = AuthService_1 = class AuthService {
                 details: `User logged in at ${new Date().toISOString()}`,
             },
         });
-        const payload = { sub: user.id, email: user.email, role: user.role || 'USER' };
+        const payload = { sub: user.id, email: user.email, role: user.role || 'USER', ver: user.sessionVersion };
         this.logger.log(`User ${user.email} logged in successfully`);
         return {
             access_token: this.jwtService.sign(payload),
@@ -118,19 +128,23 @@ let AuthService = AuthService_1 = class AuthService {
     }
     async register(registerDto) {
         this.logger.log(`Registration attempt for ${registerDto.email}`);
+        const email = this.normalizeEmail(registerDto.email);
         const existingUser = await this.prisma.user.findUnique({
-            where: { email: registerDto.email },
+            where: { email },
         });
         if (existingUser) {
             throw new common_1.ConflictException('Email already registered');
         }
         const passwordHash = await bcrypt.hash(registerDto.password, 12);
+        const verificationToken = this.createToken();
         const user = await this.prisma.user.create({
             data: {
-                email: registerDto.email,
-                name: registerDto.username || registerDto.email.split('@')[0],
+                email,
+                name: registerDto.username || email.split('@')[0],
                 passwordHash,
                 role: 'USER',
+                emailVerificationTokenHash: this.hashToken(verificationToken),
+                emailVerificationExpiresAt: new Date(Date.now() + EMAIL_VERIFICATION_HOURS * 60 * 60 * 1000),
             },
         });
         await this.prisma.userActivity.create({
@@ -142,23 +156,91 @@ let AuthService = AuthService_1 = class AuthService {
                 details: `User registered at ${new Date().toISOString()}`,
             },
         });
-        this.logger.log(`User ${user.email} registered successfully`);
-        const payload = { sub: user.id, email: user.email, role: user.role };
+        try {
+            await this.emailService.sendVerificationEmail(user.email, verificationToken);
+        }
+        catch (error) {
+            this.logger.error(`Unable to send verification email to ${user.email}`, error instanceof Error ? error.stack : undefined);
+            throw new common_1.InternalServerErrorException('Registration could not be completed. Please try again later.');
+        }
+        this.logger.log(`User ${user.email} registered; verification required`);
         return {
-            access_token: this.jwtService.sign(payload),
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                role: user.role,
-            },
+            message: 'Registration successful. Check your email to verify your account.',
         };
+    }
+    async verifyEmail(token) {
+        const user = await this.prisma.user.findFirst({
+            where: {
+                emailVerificationTokenHash: this.hashToken(token),
+                emailVerificationExpiresAt: { gt: new Date() },
+            },
+        });
+        if (!user)
+            throw new common_1.BadRequestException('Verification link is invalid or expired');
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: { emailVerifiedAt: new Date(), emailVerificationTokenHash: null, emailVerificationExpiresAt: null },
+        });
+        return { message: 'Email verified successfully. You can now sign in.' };
+    }
+    async requestPasswordReset(emailInput) {
+        const email = this.normalizeEmail(emailInput);
+        const user = await this.prisma.user.findUnique({ where: { email } });
+        if (user) {
+            const token = this.createToken();
+            await this.prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    passwordResetTokenHash: this.hashToken(token),
+                    passwordResetExpiresAt: new Date(Date.now() + PASSWORD_RESET_MINUTES * 60 * 1000),
+                },
+            });
+            try {
+                await this.emailService.sendPasswordResetEmail(user.email, token);
+            }
+            catch (error) {
+                this.logger.error(`Unable to send password reset email to ${user.email}`, error instanceof Error ? error.stack : undefined);
+            }
+        }
+        return { message: 'If an account exists for that email, password reset instructions have been sent.' };
+    }
+    async resetPassword(token, password) {
+        const user = await this.prisma.user.findFirst({
+            where: {
+                passwordResetTokenHash: this.hashToken(token),
+                passwordResetExpiresAt: { gt: new Date() },
+            },
+        });
+        if (!user)
+            throw new common_1.BadRequestException('Password reset link is invalid or expired');
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: {
+                passwordHash: await bcrypt.hash(password, 12),
+                passwordResetTokenHash: null,
+                passwordResetExpiresAt: null,
+                failedAttempts: 0,
+                lockedUntil: null,
+                sessionVersion: { increment: 1 },
+            },
+        });
+        return { message: 'Password reset successfully. You can now sign in.' };
+    }
+    normalizeEmail(email) {
+        return email.trim().toLowerCase();
+    }
+    createToken() {
+        return (0, crypto_1.randomBytes)(32).toString('hex');
+    }
+    hashToken(token) {
+        return (0, crypto_1.createHash)('sha256').update(token).digest('hex');
     }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        email_service_1.EmailService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

@@ -167,7 +167,8 @@ __decorate([
 ], ElectionOrchestratorController.prototype, "rejectApplication", null);
 __decorate([
     (0, common_1.Get)('system/activity'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_guard_1.Roles)('ADMIN'),
     __param(0, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

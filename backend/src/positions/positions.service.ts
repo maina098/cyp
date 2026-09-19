@@ -51,17 +51,6 @@ export class PositionsService {
       where: { id },
       include: {
         election: true,
-        applications: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-              },
-            },
-          },
-        },
         _count: {
           select: { applications: true },
         },

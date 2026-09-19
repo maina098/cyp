@@ -46,14 +46,22 @@ async function bootstrap() {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+  const publicSiteOrigin = 'https://www.coastalyouthparliament.org';
+  if (!allowedOrigins.includes(publicSiteOrigin)) {
+    allowedOrigins.push(publicSiteOrigin);
+  }
+  const isAllowedOrigin = (origin?: string) =>
+    !origin ||
+    allowedOrigins.includes(origin) ||
+    /^https:\/\/(www\.)?coastalyouthparliament\.org$/.test(origin);
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
         return;
       }
-      callback(new Error('Origin is not allowed by CORS'));
+      callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],

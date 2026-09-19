@@ -13,7 +13,7 @@ export function usePositionToggle() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = 'cookie-session';
       if (!token) {
         throw new Error('Not authenticated');
       }

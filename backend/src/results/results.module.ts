@@ -5,8 +5,8 @@ import { ResultsGateway } from './results.gateway';
 @Module({
   imports: [
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'jkp_secret_key_2026',
-      signOptions: { expiresIn: '1d' },
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: Number(process.env.JWT_EXPIRES_IN_SECONDS || 900) },
     }),
   ],
   providers: [ResultsGateway],

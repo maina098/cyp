@@ -24,21 +24,15 @@ export default function SignUpPage() {
     if (password !== confirmPassword) {
       return setMessage('Passwords do not match')
     }
-    if (password.length < 6) {
-      return setMessage('Password must be at least 6 characters')
+    if (password.length < 12) {
+      return setMessage('Password must be at least 12 characters')
     }
     setLoading(true)
     const res = await signUp(username, email, password)
     setLoading(false)
-    const token = res.access_token || res.token
-    if (token) {
-      localStorage.setItem('token', token)
-      if (res.user) {
-        localStorage.setItem('user', JSON.stringify(res.user))
-      }
-      setMessage('Account created successfully!')
-      const redirectPath = res.user?.role?.toUpperCase() === 'ADMIN' ? '/admin' : '/dashboard'
-      setTimeout(() => router.push(redirectPath), 800)
+    if (res.message && !res.access_token && !res.token) {
+      setMessage(res.message)
+      setTimeout(() => router.push('/signin'), 1200)
     } else {
       setMessage(res.message || 'Sign up failed')
     }

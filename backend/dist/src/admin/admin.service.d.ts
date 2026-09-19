@@ -33,6 +33,7 @@ export declare class AdminService {
         content: string;
         category: string;
         imageUrl?: string;
+        published?: boolean;
     }): Promise<{
         id: string;
         createdAt: Date;

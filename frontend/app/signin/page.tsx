@@ -21,9 +21,8 @@ export default function SignInPage() {
     setLoading(true)
     const res = await signIn(email, password)
     setLoading(false)
-    const token = res.access_token || res.token
-    if (token) {
-      localStorage.setItem('token', token)
+    if (res.user) {
+      localStorage.removeItem('token')
       if (res.user) {
         localStorage.setItem('user', JSON.stringify(res.user))
       }
@@ -31,7 +30,7 @@ export default function SignInPage() {
       const redirectPath = res.user?.role?.toUpperCase() === 'ADMIN' ? '/admin' : '/dashboard'
       router.replace(redirectPath)
     } else {
-      setMessage('Internal server error. Please try again later.')
+      setMessage(res.message || 'Unable to sign in. Please try again.')
     }
   }
 
