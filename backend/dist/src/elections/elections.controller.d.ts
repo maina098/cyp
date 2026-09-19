@@ -185,6 +185,24 @@ export declare class ElectionsController {
         success: boolean;
         message: string;
     }>;
+    getState(id: string, req: any): Promise<{
+        election: {
+            id: string;
+            title: string;
+            status: string;
+            startsAt: Date;
+            endsAt: Date;
+        };
+        positions: {
+            id: string;
+            title: string;
+            isOpen: boolean;
+            canApply: boolean;
+            canVote: boolean;
+            myApplicationStatus: string | null;
+            hasVoted: boolean;
+        }[];
+    }>;
     getResults(id: string): Promise<{
         totalVotes: number;
         results: {

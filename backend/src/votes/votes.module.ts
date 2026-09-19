@@ -4,9 +4,10 @@ import { VotesController } from './votes.controller';
 import { PrismaModule } from '../prisma.module';
 import { ElectionsModule } from '../elections/elections.module';
 import { ResultsModule } from '../results/results.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, ElectionsModule, ResultsModule],
+  imports: [PrismaModule, ElectionsModule, ResultsModule, AuthModule],
   controllers: [VotesController],
   providers: [VotesService],
   exports: [VotesService],

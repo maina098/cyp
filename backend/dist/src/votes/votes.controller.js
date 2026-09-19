@@ -19,6 +19,10 @@ const cast_vote_dto_1 = require("./dto/cast-vote.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const results_gateway_1 = require("../results/results.gateway");
+class VerifyOtpDto {
+    otpId;
+    otpCode;
+}
 let VotesController = class VotesController {
     votesService;
     resultsGateway;
@@ -31,6 +35,15 @@ let VotesController = class VotesController {
     }
     getUserVote(electionId, req) {
         return this.votesService.getUserVote(electionId, req.user.id);
+    }
+    requestVotingOtp(electionId, req) {
+        return this.votesService.requestVotingOtp(electionId, req.user.id);
+    }
+    verifyVotingOtp(electionId, body, req) {
+        return this.votesService.verifyVotingOtp(electionId, req.user.id, body.otpId, body.otpCode);
+    }
+    createVotingSession(electionId, body, req) {
+        return this.votesService.createVotingSession(electionId, req.user.id, body.otpId);
     }
     getElectionVotes(electionId) {
         return this.votesService.getElectionVotes(electionId);
@@ -56,6 +69,35 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], VotesController.prototype, "getUserVote", null);
+__decorate([
+    (0, common_1.Post)('elections/:id/vote/otp/request'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], VotesController.prototype, "requestVotingOtp", null);
+__decorate([
+    (0, common_1.Post)('elections/:id/vote/otp/verify'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, VerifyOtpDto, Object]),
+    __metadata("design:returntype", void 0)
+], VotesController.prototype, "verifyVotingOtp", null);
+__decorate([
+    (0, common_1.Post)('elections/:id/vote/session'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", void 0)
+], VotesController.prototype, "createVotingSession", null);
 __decorate([
     (0, common_1.Get)('elections/:id/votes'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

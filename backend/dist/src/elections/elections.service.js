@@ -273,6 +273,56 @@ let ElectionsService = ElectionsService_1 = class ElectionsService {
             })),
         };
     }
+    async getElectionState(electionId, userId) {
+        const election = await this.prisma.election.findUnique({
+            where: { id: electionId },
+            include: {
+                positions: true,
+                applications: userId ? {
+                    where: { userId },
+                    select: { id: true, positionId: true, status: true },
+                } : false,
+            },
+        });
+        if (!election) {
+            throw new common_1.NotFoundException('Election not found');
+        }
+        const userVotes = userId
+            ? await this.prisma.vote.findMany({
+                where: { electionId, voterId: userId },
+                select: { positionId: true },
+            })
+            : [];
+        const votedPositionIds = new Set(userVotes
+            .map((vote) => vote.positionId)
+            .filter((positionId) => Boolean(positionId)));
+        const applicationMap = new Map(election.applications
+            ? election.applications.map((application) => [application.positionId, application])
+            : []);
+        return {
+            election: {
+                id: election.id,
+                title: election.title,
+                status: election.status,
+                startsAt: election.startsAt,
+                endsAt: election.endsAt,
+            },
+            positions: election.positions.map((position) => {
+                const myApplication = applicationMap.get(position.id);
+                const hasVoted = votedPositionIds.has(position.id);
+                const isOpen = position.isOpen;
+                return {
+                    id: position.id,
+                    title: position.title,
+                    isOpen,
+                    canApply: isOpen && election.status === 'active',
+                    canVote: election.status === 'active' && !hasVoted,
+                    myApplicationStatus: myApplication?.status ?? null,
+                    hasVoted,
+                };
+            }),
+        };
+    }
     async activateDueElections(now) {
         const due = await this.prisma.election.findMany({
             where: {

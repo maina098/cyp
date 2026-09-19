@@ -80,6 +80,15 @@ let EmailService = EmailService_1 = class EmailService {
         });
         this.logger.log(`Password reset email sent to ${email}`);
     }
+    async sendVotingOtpEmail(email, code, electionTitle) {
+        await this.transporter.sendMail({
+            from: this.sender,
+            to: email,
+            subject: `Your CYP voting code for ${electionTitle}`,
+            text: `Your one-time voting code is ${code}. It expires in 5 minutes. If you did not request this code, ignore this email.`,
+        });
+        this.logger.log(`Voting OTP email sent to ${email}`);
+    }
 };
 exports.EmailService = EmailService;
 exports.EmailService = EmailService = EmailService_1 = __decorate([

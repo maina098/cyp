@@ -11,6 +11,7 @@ export declare class AuthService {
     constructor(prisma: PrismaService, jwtService: JwtService, emailService: EmailService);
     login(loginDto: LoginDto): Promise<{
         access_token: string;
+        refresh_token: string;
         user: {
             id: string;
             email: string;
@@ -30,6 +31,19 @@ export declare class AuthService {
     resetPassword(token: string, password: string): Promise<{
         message: string;
     }>;
+    refreshAccessToken(refreshToken: string): Promise<{
+        access_token: string;
+        refresh_token: string;
+        user: {
+            id: string;
+            email: string;
+            name: string;
+            role: string;
+        };
+    }>;
+    revokeRefreshToken(userId: string, refreshToken?: string): Promise<void>;
+    private createRefreshToken;
+    private rotateRefreshToken;
     private normalizeEmail;
     private createToken;
     private hashToken;

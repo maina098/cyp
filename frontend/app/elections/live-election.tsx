@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { API_BASE, WS_BASE } from '@/lib/api-base';
+import { authenticatedFetch, castElectionVote, createVotingSession, requestVotingOtp, verifyVotingOtp } from '@/lib/api';
 
 const WS_URL = WS_BASE.replace(/^ws/, 'http');
 
@@ -46,6 +47,10 @@ export default function LiveElection({ election }: { election: ElectionDetails }
   const [message, setMessage] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [countdown, setCountdown] = useState('');
+  const [otpId, setOtpId] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null);
+  const [otpRequested, setOtpRequested] = useState(false);
 
   const isActive = election.status === 'active';
   const isClosed = election.status === 'closed';
@@ -78,7 +83,7 @@ export default function LiveElection({ election }: { election: ElectionDetails }
   useEffect(() => {
     const loadResults = async () => {
       try {
-        const response = await fetch(`${API_BASE}/elections/${election.id}/results`, { cache: 'no-store', credentials: 'include' });
+        const response = await authenticatedFetch(`/elections/${election.id}/results`);
         if (!response.ok) return;
         const payload = await response.json();
         if (Array.isArray(payload)) setResults(payload);
@@ -111,14 +116,9 @@ export default function LiveElection({ election }: { election: ElectionDetails }
   }, [election.startsAt, election.endsAt, isClosed]);
 
   useEffect(() => {
-    const token = 'cookie-session';
-
     const loadVote = async () => {
       try {
-        const response = await fetch(`${API_BASE}/elections/${election?.id}/my-vote`, {
-          credentials: 'include',
-          headers: {},
-        });
+        const response = await authenticatedFetch(`/elections/${election?.id}/my-vote`);
         if (response.ok) {
           const data = await response.json();
           const votes = Array.isArray(data) ? data : data?.candidateId ? [data] : [];
@@ -149,35 +149,51 @@ export default function LiveElection({ election }: { election: ElectionDetails }
     return Array.from(groups.values());
   }, [election.candidates]);
 
-  const voteNow = async () => {
+  const requestOtp = async () => {
     const selections = Object.values(selectedCandidates);
     if (!selections.length || selections.length < candidatesByPosition.length) {
       setMessage('Select one candidate for every position.');
       return;
     }
 
-    const token = 'cookie-session';
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const result = await requestVotingOtp(election.id);
+      setOtpId(result.otpId);
+      setOtpExpiresAt(result.expiresAt);
+      setOtpRequested(true);
+      setMessage('A one-time voting code has been sent to your registered email.');
+    } catch (error: any) {
+      setMessage(error.message || 'Unable to request a voting code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmVote = async () => {
+    if (!otpId || !otpCode.trim()) {
+      setMessage('Enter the one-time voting code sent to your email.');
+      return;
+    }
 
     setLoading(true);
     setMessage(null);
 
     try {
-      for (const candidateId of selections) {
-        const response = await fetch(`${API_BASE}/elections/${election?.id}/vote`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidateId }),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Unable to cast vote');
+      await verifyVotingOtp(election.id, otpId, otpCode.trim());
+      await createVotingSession(election.id, otpId);
+
+      for (const candidateId of Object.values(selectedCandidates)) {
+        await castElectionVote(election.id, candidateId);
       }
 
       setHasVoted(true);
+      setOtpRequested(false);
+      setOtpCode('');
       setMessage('Vote recorded successfully.');
-      const responseResults = await fetch(`${API_BASE}/elections/${election?.id}/results`, {
-        credentials: 'include',
-      });
+      const responseResults = await authenticatedFetch(`/elections/${election?.id}/results`);
       if (responseResults.ok) {
         const nextData = await responseResults.json();
         setResults(Array.isArray(nextData) ? nextData : nextData.results || []);
@@ -270,15 +286,38 @@ export default function LiveElection({ election }: { election: ElectionDetails }
             <div className="vote-legend">{election.candidates.map((candidate) => { const count = results.find((item) => item.candidateId === candidate.id)?.voteCount || 0; return <span key={candidate.id}><i />{candidate.name}: {totalVotes ? ((count / totalVotes) * 100).toFixed(2) : '0.00'}%</span> })}</div>
           </div>
 
-          <button
-            type="button"
-            className="primary-btn"
-            onClick={voteNow}
-            disabled={!isActive || hasVoted || loading}
-            style={{ marginTop: 10 }}
-          >
-            {loading ? 'Submitting...' : hasVoted ? 'Vote submitted' : 'Cast vote'}
-          </button>
+          {!otpRequested ? (
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={requestOtp}
+              disabled={!isActive || hasVoted || loading}
+              style={{ marginTop: 10 }}
+            >
+              {loading ? 'Requesting code...' : hasVoted ? 'Vote submitted' : 'Continue to secure voting'}
+            </button>
+          ) : (
+            <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+              <label htmlFor="voting-otp">Enter your voting code</label>
+              <input
+                id="voting-otp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={otpCode}
+                onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="6-digit code"
+                maxLength={6}
+                disabled={loading}
+              />
+              {otpExpiresAt && <small>Code expires at {new Date(otpExpiresAt).toLocaleTimeString()}</small>}
+              <button type="button" className="primary-btn" onClick={confirmVote} disabled={loading || otpCode.length !== 6}>
+                {loading ? 'Verifying and submitting...' : 'Verify code and cast vote'}
+              </button>
+              <button type="button" className="secondary-btn" onClick={requestOtp} disabled={loading}>
+                Send a new code
+              </button>
+            </div>
+          )}
 
           {message && <div className="vote-message" style={{ color: message.includes('success') ? '#1d7a3d' : '#b42318' }}>{message}</div>}
         </aside>

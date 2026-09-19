@@ -16,6 +16,16 @@ export declare class AuthController {
             role: string;
         };
     }>;
+    refresh(body: {
+        refreshToken?: string;
+    }, response: Response): Promise<{
+        user: {
+            id: string;
+            email: string;
+            name: string;
+            role: string;
+        };
+    }>;
     register(registerDto: RegisterDto): Promise<{
         message: string;
     }>;

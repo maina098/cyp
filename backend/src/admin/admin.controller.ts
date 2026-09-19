@@ -5,6 +5,7 @@ import { extname } from 'path';
 import { mkdirSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard, Roles } from '../common/guards/roles.guard';
 import { AdminService } from './admin.service';
@@ -13,6 +14,7 @@ import { AdminService } from './admin.service';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
+@Throttle({ default: { limit: 30, ttl: 60_000 } })
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}

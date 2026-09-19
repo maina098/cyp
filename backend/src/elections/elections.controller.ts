@@ -98,6 +98,12 @@ export class ElectionsController {
     return this.electionsService.delete(id, req.user.id);
   }
 
+  @Get(':id/state')
+  @ApiOperation({ summary: 'Get the canonical election state for public and member dashboards' })
+  getState(@Param('id') id: string, @Request() req) {
+    return this.electionsService.getElectionState(id, req.user?.id);
+  }
+
   @Get(':id/results')
   @ApiOperation({ summary: 'Get election results' })
   getResults(@Param('id') id: string) {

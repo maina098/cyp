@@ -24,6 +24,7 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromExtractors([
                 (request) => request?.cookies?.cyp_session || null,
+                (request) => request?.headers?.authorization?.startsWith('Bearer ') ? request.headers.authorization.replace('Bearer ', '') : null,
             ]),
             ignoreExpiration: false,
             secretOrKey: secret,

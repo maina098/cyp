@@ -54,6 +54,8 @@ const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
 const EMAIL_VERIFICATION_HOURS = 24;
 const PASSWORD_RESET_MINUTES = 30;
+const ACCESS_TOKEN_TTL_SECONDS = Number(process.env.ACCESS_TOKEN_TTL_SECONDS || 900);
+const REFRESH_TOKEN_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS || 7);
 const DUMMY_PASSWORD_HASH = '$2b$12$7QJ8Q3x5q9Gf8f3mQq6xUu8nYp2sJ5Lr9vT2xK4mN6pR8sC1dE3fG';
 let AuthService = AuthService_1 = class AuthService {
     prisma;
@@ -116,8 +118,11 @@ let AuthService = AuthService_1 = class AuthService {
         });
         const payload = { sub: user.id, email: user.email, role: user.role || 'USER', ver: user.sessionVersion };
         this.logger.log(`User ${user.email} logged in successfully`);
+        const accessToken = this.jwtService.sign(payload, { expiresIn: `${ACCESS_TOKEN_TTL_SECONDS}s` });
+        const refreshToken = await this.createRefreshToken(user.id);
         return {
-            access_token: this.jwtService.sign(payload),
+            access_token: accessToken,
+            refresh_token: refreshToken,
             user: {
                 id: user.id,
                 email: user.email,
@@ -225,6 +230,72 @@ let AuthService = AuthService_1 = class AuthService {
             },
         });
         return { message: 'Password reset successfully. You can now sign in.' };
+    }
+    async refreshAccessToken(refreshToken) {
+        if (!refreshToken) {
+            throw new common_1.UnauthorizedException('Refresh token is required');
+        }
+        const refreshTokenHash = this.hashToken(refreshToken);
+        const storedToken = await this.prisma.refreshToken.findUnique({
+            where: { tokenHash: refreshTokenHash },
+        });
+        if (!storedToken || storedToken.revokedAt || storedToken.expiresAt <= new Date()) {
+            throw new common_1.UnauthorizedException('Refresh token is invalid or expired');
+        }
+        const user = await this.prisma.user.findUnique({
+            where: { id: storedToken.userId },
+        });
+        if (!user) {
+            throw new common_1.UnauthorizedException('User no longer exists');
+        }
+        const payload = { sub: user.id, email: user.email, role: user.role || 'USER', ver: user.sessionVersion };
+        const newAccessToken = this.jwtService.sign(payload, { expiresIn: `${ACCESS_TOKEN_TTL_SECONDS}s` });
+        const rotatedRefreshToken = await this.rotateRefreshToken(storedToken.id, user.id);
+        return {
+            access_token: newAccessToken,
+            refresh_token: rotatedRefreshToken,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role || 'USER',
+            },
+        };
+    }
+    async revokeRefreshToken(userId, refreshToken) {
+        if (refreshToken) {
+            await this.prisma.refreshToken.updateMany({
+                where: {
+                    userId,
+                    tokenHash: this.hashToken(refreshToken),
+                },
+                data: { revokedAt: new Date() },
+            });
+            return;
+        }
+        await this.prisma.refreshToken.updateMany({
+            where: { userId, revokedAt: null },
+            data: { revokedAt: new Date() },
+        });
+    }
+    async createRefreshToken(userId) {
+        const token = (0, crypto_1.randomBytes)(32).toString('hex');
+        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+        await this.prisma.refreshToken.create({
+            data: {
+                userId,
+                tokenHash: this.hashToken(token),
+                expiresAt,
+            },
+        });
+        return token;
+    }
+    async rotateRefreshToken(existingTokenId, userId) {
+        await this.prisma.refreshToken.update({
+            where: { id: existingTokenId },
+            data: { revokedAt: new Date() },
+        });
+        return this.createRefreshToken(userId);
     }
     normalizeEmail(email) {
         return email.trim().toLowerCase();

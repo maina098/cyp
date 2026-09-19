@@ -5,4 +5,5 @@ export declare class EmailService {
     private get appUrl();
     sendVerificationEmail(email: string, token: string): Promise<void>;
     sendPasswordResetEmail(email: string, token: string): Promise<void>;
+    sendVotingOtpEmail(email: string, code: string, electionTitle: string): Promise<void>;
 }

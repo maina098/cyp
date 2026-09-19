@@ -1,12 +1,14 @@
 import { Injectable, ConflictException, NotFoundException, ForbiddenException, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CastVoteDto } from './dto/cast-vote.dto';
+import { createHash, randomInt } from 'crypto';
+import { EmailService } from '../auth/email.service';
 
 @Injectable()
 export class VotesService {
   private readonly logger = new Logger(VotesService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private emailService: EmailService) {}
 
   async castVote(electionId: string, castVoteDto: CastVoteDto, voterId: string, resultsGateway?: any) {
     this.logger.log(`User ${voterId} attempting to vote in election ${electionId}`);
@@ -115,6 +117,122 @@ export class VotesService {
       this.logger.error(`Vote failed for user ${voterId}: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  async requestVotingOtp(electionId: string, userId: string) {
+    const election = await this.prisma.election.findUnique({ where: { id: electionId } });
+    if (!election) {
+      throw new NotFoundException('Election not found');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+
+    const otpCode = randomInt(100000, 999999).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const otpHash = this.hashOptCode(otpCode);
+
+    const otp = await this.prisma.voteOtp.create({
+      data: {
+        electionId,
+        userId,
+        codeHash: otpHash,
+        expiresAt,
+      },
+    });
+
+    await this.emailService.sendVotingOtpEmail(user.email, otpCode, election.title);
+
+    return {
+      otpId: otp.id,
+      expiresAt,
+      message: 'OTP created. Use the code in the verification step.',
+    };
+  }
+
+  async verifyVotingOtp(electionId: string, userId: string, otpId: string, otpCode: string) {
+    const otp = await this.prisma.voteOtp.findFirst({
+      where: {
+        id: otpId,
+        electionId,
+        userId,
+        usedAt: null,
+      },
+    });
+
+    if (!otp) {
+      throw new BadRequestException('OTP is invalid or already used');
+    }
+
+    if (otp.expiresAt <= new Date()) {
+      throw new BadRequestException('OTP has expired');
+    }
+
+    if (this.hashOptCode(otpCode) !== otp.codeHash) {
+      throw new BadRequestException('OTP is incorrect');
+    }
+
+    await this.prisma.voteOtp.update({
+      where: { id: otp.id },
+      data: { verifiedAt: new Date() },
+    });
+
+    return {
+      valid: true,
+      otpId: otp.id,
+      expiresAt: otp.expiresAt,
+      message: 'OTP verified successfully',
+    };
+  }
+
+  async createVotingSession(electionId: string, userId: string, otpId: string) {
+    const otp = await this.prisma.voteOtp.findUnique({ where: { id: otpId } });
+    if (!otp || otp.userId !== userId || otp.electionId !== electionId || !otp.verifiedAt) {
+      throw new BadRequestException('OTP has not been verified for this election');
+    }
+
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const session = await this.prisma.votingSession.create({
+      data: {
+        electionId,
+        userId,
+        otpId,
+        expiresAt,
+      },
+    });
+
+    return {
+      sessionId: session.id,
+      expiresAt,
+      message: 'Voting session started successfully',
+    };
+  }
+
+  async validateVotingSession(electionId: string, userId: string, sessionId: string) {
+    const session = await this.prisma.votingSession.findFirst({
+      where: {
+        id: sessionId,
+        electionId,
+        userId,
+        completedAt: null,
+      },
+    });
+
+    if (!session) {
+      throw new BadRequestException('Voting session is invalid or already completed');
+    }
+
+    if (session.expiresAt <= new Date()) {
+      throw new BadRequestException('Voting session has expired');
+    }
+
+    return { valid: true, sessionId: session.id, expiresAt: session.expiresAt };
+  }
+
+  private hashOptCode(code: string) {
+    return createHash('sha256').update(code).digest('hex');
   }
 
   async getUserVote(electionId: string, voterId: string) {

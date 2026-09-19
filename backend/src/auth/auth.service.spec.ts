@@ -35,6 +35,12 @@ describe('AuthService', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    refreshToken: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
     userActivity: {
       create: jest.fn(),
     },
@@ -82,6 +88,7 @@ describe('AuthService', () => {
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
       mockPrismaService.user.update.mockResolvedValue({ ...mockUser, failedAttempts: 0, lockedUntil: null });
       mockPrismaService.userActivity.create.mockResolvedValue({});
+      mockPrismaService.refreshToken.create.mockResolvedValue({ id: 'refresh-123' });
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       mockJwtService.sign.mockReturnValue('access-token');
 

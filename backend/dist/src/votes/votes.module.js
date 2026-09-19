@@ -13,12 +13,13 @@ const votes_controller_1 = require("./votes.controller");
 const prisma_module_1 = require("../prisma.module");
 const elections_module_1 = require("../elections/elections.module");
 const results_module_1 = require("../results/results.module");
+const auth_module_1 = require("../auth/auth.module");
 let VotesModule = class VotesModule {
 };
 exports.VotesModule = VotesModule;
 exports.VotesModule = VotesModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, elections_module_1.ElectionsModule, results_module_1.ResultsModule],
+        imports: [prisma_module_1.PrismaModule, elections_module_1.ElectionsModule, results_module_1.ResultsModule, auth_module_1.AuthModule],
         controllers: [votes_controller_1.VotesController],
         providers: [votes_service_1.VotesService],
         exports: [votes_service_1.VotesService],

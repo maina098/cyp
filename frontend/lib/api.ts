@@ -58,14 +58,61 @@ export type MemberDashboard = {
   elections: Election[];
 };
 
+export class ApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshSession(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
+export async function authenticatedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const request = () => fetch(`${API_BASE}${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      ...(init.headers || {}),
+      ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+    },
+    cache: 'no-store',
+  });
+
+  let response = await request();
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    const refreshed = await refreshSession();
+    if (refreshed) response = await request();
+  }
+
+  return response;
+}
+
+async function responseMessage(response: Response): Promise<string> {
+  const payload = await parseJsonResponse<{ message?: string | string[] }>(response);
+  return Array.isArray(payload?.message) ? payload.message.join(', ') : payload?.message || `Request failed (${response.status})`;
+}
+
 async function authenticatedJson<T>(token: string, path: string, init: RequestInit = {}): Promise<T | null> {
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      credentials: 'include',
-      headers: { ...(init.headers || {}), ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
-      cache: 'no-store',
-    });
+    const response = await authenticatedFetch(path, init);
     return response.ok ? response.json() : null;
   } catch {
     return null;
@@ -78,6 +125,39 @@ export function getMemberDashboard(token: string) {
 
 export function logoutSession() {
   return fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+}
+
+export async function requestVotingOtp(electionId: string) {
+  const response = await authenticatedFetch(`/elections/${electionId}/vote/otp/request`, { method: 'POST' });
+  if (!response.ok) throw new ApiError(response.status, await responseMessage(response));
+  return response.json() as Promise<{ otpId: string; expiresAt: string; message: string }>;
+}
+
+export async function verifyVotingOtp(electionId: string, otpId: string, otpCode: string) {
+  const response = await authenticatedFetch(`/elections/${electionId}/vote/otp/verify`, {
+    method: 'POST',
+    body: JSON.stringify({ otpId, otpCode }),
+  });
+  if (!response.ok) throw new ApiError(response.status, await responseMessage(response));
+  return response.json() as Promise<{ valid: boolean; otpId: string; expiresAt: string; message: string }>;
+}
+
+export async function createVotingSession(electionId: string, otpId: string) {
+  const response = await authenticatedFetch(`/elections/${electionId}/vote/session`, {
+    method: 'POST',
+    body: JSON.stringify({ otpId }),
+  });
+  if (!response.ok) throw new ApiError(response.status, await responseMessage(response));
+  return response.json() as Promise<{ sessionId: string; expiresAt: string; message: string }>;
+}
+
+export async function castElectionVote(electionId: string, candidateId: string) {
+  const response = await authenticatedFetch(`/elections/${electionId}/vote`, {
+    method: 'POST',
+    body: JSON.stringify({ candidateId }),
+  });
+  if (!response.ok) throw new ApiError(response.status, await responseMessage(response));
+  return response.json();
 }
 
 export function updateMemberProfile(token: string, data: Record<string, string>) {

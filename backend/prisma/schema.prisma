@@ -30,12 +30,30 @@ model User {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  votes        Vote[]
-  applications ElectionApplication[]
-  activities   UserActivity[]
+  votes            Vote[]
+  applications     ElectionApplication[]
+  activities       UserActivity[]
+  refreshTokens    RefreshToken[]
+  votingSessions   VotingSession[]
+  voteOtps         VoteOtp[]
   eventParticipations UserEventParticipation[]
-  contentReads UserContentRead[]
+  contentReads     UserContentRead[]
   communityServices CommunityService[]
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid())
+  userId      String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Governor {
@@ -186,6 +204,7 @@ model Election {
   electionResults ElectionResult[]
   positions       ElectionPosition[]
   applications    ElectionApplication[]
+  positionResults PositionResult[]
 }
 
 model Candidate {
@@ -224,6 +243,36 @@ model Vote {
   @@index([voterId])
 }
 
+model VoteOtp {
+  id          String    @id @default(uuid())
+  electionId  String
+  userId      String
+  codeHash    String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  verifiedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([electionId, userId])
+  @@index([expiresAt])
+}
+
+model VotingSession {
+  id          String    @id @default(uuid())
+  electionId  String
+  userId      String
+  otpId       String    @unique
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  expiresAt   DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([electionId, userId])
+}
+
 model ElectionResult {
   id          String   @id @default(uuid())
   electionId  String
@@ -235,6 +284,24 @@ model ElectionResult {
   candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
   @@unique([electionId, candidateId])
+  @@index([electionId])
+}
+
+model PositionResult {
+  id          String   @id @default(uuid())
+  electionId  String
+  positionId  String
+  candidateId String?
+  totalVotes  Int      @default(0)
+  percentage  Decimal? @db.Decimal(5, 2)
+  winnerName  String?
+  isTie       Boolean  @default(false)
+  computedAt  DateTime @default(now())
+
+  election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  position ElectionPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  @@unique([electionId, positionId])
   @@index([electionId])
 }
 
@@ -253,6 +320,7 @@ model ElectionPosition {
   applications ElectionApplication[]
   positionCandidates Candidate[]
   votes             Vote[]
+  positionResults   PositionResult[]
 
   @@unique([electionId, title])
   @@index([electionId])

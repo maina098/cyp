@@ -188,6 +188,24 @@ export declare class ElectionsService {
             };
         }[];
     }>;
+    getElectionState(electionId: string, userId?: string): Promise<{
+        election: {
+            id: string;
+            title: string;
+            status: string;
+            startsAt: Date;
+            endsAt: Date;
+        };
+        positions: {
+            id: string;
+            title: string;
+            isOpen: boolean;
+            canApply: boolean;
+            canVote: boolean;
+            myApplicationStatus: string | null;
+            hasVoted: boolean;
+        }[];
+    }>;
     activateDueElections(now: Date): Promise<{
         id: string;
         createdAt: Date;

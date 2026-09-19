@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContactController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const contact_service_1 = require("./contact.service");
@@ -32,6 +33,7 @@ let ContactController = class ContactController {
 exports.ContactController = ContactController;
 __decorate([
     (0, common_1.Post)('message'),
+    (0, throttler_1.Throttle)({ default: { limit: 3, ttl: 60_000 } }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),

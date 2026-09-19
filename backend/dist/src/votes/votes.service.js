@@ -13,11 +13,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VotesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma.service");
+const crypto_1 = require("crypto");
+const email_service_1 = require("../auth/email.service");
 let VotesService = VotesService_1 = class VotesService {
     prisma;
+    emailService;
     logger = new common_1.Logger(VotesService_1.name);
-    constructor(prisma) {
+    constructor(prisma, emailService) {
         this.prisma = prisma;
+        this.emailService = emailService;
     }
     async castVote(electionId, castVoteDto, voterId, resultsGateway) {
         this.logger.log(`User ${voterId} attempting to vote in election ${electionId}`);
@@ -105,6 +109,102 @@ let VotesService = VotesService_1 = class VotesService {
             throw error;
         }
     }
+    async requestVotingOtp(electionId, userId) {
+        const election = await this.prisma.election.findUnique({ where: { id: electionId } });
+        if (!election) {
+            throw new common_1.NotFoundException('Election not found');
+        }
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.ForbiddenException('User not found');
+        }
+        const otpCode = (0, crypto_1.randomInt)(100000, 999999).toString();
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+        const otpHash = this.hashOptCode(otpCode);
+        const otp = await this.prisma.voteOtp.create({
+            data: {
+                electionId,
+                userId,
+                codeHash: otpHash,
+                expiresAt,
+            },
+        });
+        await this.emailService.sendVotingOtpEmail(user.email, otpCode, election.title);
+        return {
+            otpId: otp.id,
+            expiresAt,
+            message: 'OTP created. Use the code in the verification step.',
+        };
+    }
+    async verifyVotingOtp(electionId, userId, otpId, otpCode) {
+        const otp = await this.prisma.voteOtp.findFirst({
+            where: {
+                id: otpId,
+                electionId,
+                userId,
+                usedAt: null,
+            },
+        });
+        if (!otp) {
+            throw new common_1.BadRequestException('OTP is invalid or already used');
+        }
+        if (otp.expiresAt <= new Date()) {
+            throw new common_1.BadRequestException('OTP has expired');
+        }
+        if (this.hashOptCode(otpCode) !== otp.codeHash) {
+            throw new common_1.BadRequestException('OTP is incorrect');
+        }
+        await this.prisma.voteOtp.update({
+            where: { id: otp.id },
+            data: { verifiedAt: new Date() },
+        });
+        return {
+            valid: true,
+            otpId: otp.id,
+            expiresAt: otp.expiresAt,
+            message: 'OTP verified successfully',
+        };
+    }
+    async createVotingSession(electionId, userId, otpId) {
+        const otp = await this.prisma.voteOtp.findUnique({ where: { id: otpId } });
+        if (!otp || otp.userId !== userId || otp.electionId !== electionId || !otp.verifiedAt) {
+            throw new common_1.BadRequestException('OTP has not been verified for this election');
+        }
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        const session = await this.prisma.votingSession.create({
+            data: {
+                electionId,
+                userId,
+                otpId,
+                expiresAt,
+            },
+        });
+        return {
+            sessionId: session.id,
+            expiresAt,
+            message: 'Voting session started successfully',
+        };
+    }
+    async validateVotingSession(electionId, userId, sessionId) {
+        const session = await this.prisma.votingSession.findFirst({
+            where: {
+                id: sessionId,
+                electionId,
+                userId,
+                completedAt: null,
+            },
+        });
+        if (!session) {
+            throw new common_1.BadRequestException('Voting session is invalid or already completed');
+        }
+        if (session.expiresAt <= new Date()) {
+            throw new common_1.BadRequestException('Voting session has expired');
+        }
+        return { valid: true, sessionId: session.id, expiresAt: session.expiresAt };
+    }
+    hashOptCode(code) {
+        return (0, crypto_1.createHash)('sha256').update(code).digest('hex');
+    }
     async getUserVote(electionId, voterId) {
         return this.prisma.vote.findMany({
             where: { electionId, voterId },
@@ -140,6 +240,6 @@ let VotesService = VotesService_1 = class VotesService {
 exports.VotesService = VotesService;
 exports.VotesService = VotesService = VotesService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService, email_service_1.EmailService])
 ], VotesService);
 //# sourceMappingURL=votes.service.js.map

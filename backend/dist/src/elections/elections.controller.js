@@ -50,6 +50,9 @@ let ElectionsController = class ElectionsController {
     delete(id, req) {
         return this.electionsService.delete(id, req.user.id);
     }
+    getState(id, req) {
+        return this.electionsService.getElectionState(id, req.user?.id);
+    }
     getResults(id) {
         return this.electionsService.getResults(id);
     }
@@ -133,6 +136,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], ElectionsController.prototype, "delete", null);
+__decorate([
+    (0, common_1.Get)(':id/state'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get the canonical election state for public and member dashboards' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], ElectionsController.prototype, "getState", null);
 __decorate([
     (0, common_1.Get)(':id/results'),
     (0, swagger_1.ApiOperation)({ summary: 'Get election results' }),

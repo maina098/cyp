@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { VotesService } from './votes.service';
 import { PrismaService } from '../prisma.service';
+import { EmailService } from '../auth/email.service';
 
 describe('VotesService', () => {
   let service: VotesService;
@@ -51,6 +52,10 @@ describe('VotesService', () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: EmailService,
+          useValue: { sendVotingOtpEmail: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();

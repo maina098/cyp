@@ -30,7 +30,43 @@ export class AuthController {
       maxAge: 15 * 60 * 1000,
       path: '/',
     });
-    const { access_token: _accessToken, ...safeResult } = result;
+    response.cookie('cyp_refresh', result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SAME_SITE === 'none',
+      sameSite: process.env.COOKIE_SAME_SITE === 'none' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+    const { access_token: _accessToken, refresh_token: _refreshToken, ...safeResult } = result;
+    return safeResult;
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Body() body: { refreshToken?: string }, @Res({ passthrough: true }) response: Response) {
+    const refreshToken = body.refreshToken || response.req.headers.cookie
+      ?.split(';')
+      .map((value) => value.trim())
+      .find((value) => value.startsWith('cyp_refresh='))
+      ?.slice('cyp_refresh='.length);
+
+    const result = await this.authService.refreshAccessToken(refreshToken || '');
+    response.cookie('cyp_session', result.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SAME_SITE === 'none',
+      sameSite: process.env.COOKIE_SAME_SITE === 'none' ? 'none' : 'lax',
+      maxAge: 15 * 60 * 1000,
+      path: '/',
+    });
+    response.cookie('cyp_refresh', result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SAME_SITE === 'none',
+      sameSite: process.env.COOKIE_SAME_SITE === 'none' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+    const { access_token: _accessToken, refresh_token: _refreshToken, ...safeResult } = result;
     return safeResult;
   }
 
@@ -69,6 +105,12 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@Res({ passthrough: true }) response: Response) {
     response.clearCookie('cyp_session', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SAME_SITE === 'none',
+      sameSite: process.env.COOKIE_SAME_SITE === 'none' ? 'none' : 'lax',
+      path: '/',
+    });
+    response.clearCookie('cyp_refresh', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SAME_SITE === 'none',
       sameSite: process.env.COOKIE_SAME_SITE === 'none' ? 'none' : 'lax',

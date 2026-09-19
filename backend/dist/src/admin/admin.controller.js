@@ -20,6 +20,7 @@ const path_1 = require("path");
 const fs_1 = require("fs");
 const crypto_1 = require("crypto");
 const swagger_1 = require("@nestjs/swagger");
+const throttler_1 = require("@nestjs/throttler");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const admin_service_1 = require("./admin.service");
@@ -342,6 +343,7 @@ exports.AdminController = AdminController = __decorate([
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_guard_1.Roles)('ADMIN'),
+    (0, throttler_1.Throttle)({ default: { limit: 30, ttl: 60_000 } }),
     (0, common_1.Controller)('admin'),
     __metadata("design:paramtypes", [admin_service_1.AdminService])
 ], AdminController);
