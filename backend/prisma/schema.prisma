@@ -210,7 +210,7 @@ model Election {
 model Candidate {
   id         String   @id @default(uuid())
   electionId String
-  positionId String?
+  positionId String
   name       String
   bio        String?
   photoUrl   String?
@@ -218,7 +218,7 @@ model Candidate {
   createdAt  DateTime @default(now())
 
   election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
-  positionRecord ElectionPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  positionRecord ElectionPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
   votes    Vote[]
   results  ElectionResult[]
 
@@ -229,13 +229,13 @@ model Vote {
   id          String   @id @default(uuid())
   electionId  String
   candidateId String
-  positionId  String?
+  positionId  String
   voterId     String
   votedAt     DateTime @default(now())
 
   election  Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
   candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  position  ElectionPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  position  ElectionPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
   voter     User      @relation(fields: [voterId], references: [id], onDelete: Cascade)
 
   @@unique([electionId, positionId, voterId])

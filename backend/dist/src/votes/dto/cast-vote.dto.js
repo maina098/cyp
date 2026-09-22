@@ -13,10 +13,16 @@ exports.CastVoteDto = void 0;
 const class_validator_1 = require("class-validator");
 class CastVoteDto {
     candidateId;
+    positionId;
 }
 exports.CastVoteDto = CastVoteDto;
 __decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], CastVoteDto.prototype, "candidateId", void 0);
+__decorate([
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CastVoteDto.prototype, "positionId", void 0);
 //# sourceMappingURL=cast-vote.dto.js.map

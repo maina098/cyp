@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const admin_controller_1 = require("./admin.controller");
 const admin_service_1 = require("./admin.service");
 const results_module_1 = require("../results/results.module");
+const audit_service_1 = require("../common/audit.service");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -18,7 +19,7 @@ exports.AdminModule = AdminModule = __decorate([
     (0, common_1.Module)({
         imports: [results_module_1.ResultsModule],
         controllers: [admin_controller_1.AdminController],
-        providers: [admin_service_1.AdminService],
+        providers: [admin_service_1.AdminService, audit_service_1.AuditService],
         exports: [results_module_1.ResultsModule],
     })
 ], AdminModule);

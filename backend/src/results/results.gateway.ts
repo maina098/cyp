@@ -59,9 +59,10 @@ export class ResultsGateway implements OnGatewayConnection, OnGatewayDisconnect 
     const token = cookieToken;
 
     if (!token) {
-      this.logger.warn(`Client ${client.id} rejected: missing token`);
-      client.emit('error', { message: 'Unauthorized: Authentication required' });
-      client.disconnect();
+      client.data.user = null;
+      client.data.isPublic = true;
+      this.totalConnections++;
+      this.logger.log(`Client ${client.id} connected as public observer`);
       return;
     }
 
@@ -81,9 +82,13 @@ export class ResultsGateway implements OnGatewayConnection, OnGatewayDisconnect 
   }
 
   handleDisconnect(client: Socket) {
-    if (client.data.user) {
+    if (this.totalConnections > 0) {
       this.totalConnections--;
+    }
+    if (client.data.user) {
       this.logger.log(`Client ${client.id} disconnected (user: ${client.data.user.email})`);
+    } else {
+      this.logger.log(`Client ${client.id} disconnected as public observer`);
     }
     this.connectedClients.delete(client.id);
   }
@@ -95,11 +100,6 @@ export class ResultsGateway implements OnGatewayConnection, OnGatewayDisconnect 
   ) {
     if (!electionId) {
       return { ok: false, error: 'Election ID required' };
-    }
-
-    // Verify user is authenticated
-    if (!client.data.user) {
-      return { ok: false, error: 'Unauthorized' };
     }
 
     client.join(`election:${electionId}`);

@@ -187,14 +187,14 @@ export class ElectionOrchestratorService {
       );
     }
 
-    if (election.status !== 'scheduled' && election.status !== 'draft') {
-      throw new ForbiddenException(
-        'Can only open positions in draft or scheduled status',
+    if (election.status !== 'active') {
+      throw new BadRequestException(
+        'Election must be active before positions can open for applications or voting.',
       );
     }
 
     // Update specified positions
-    const updatedPositions = await this.prisma.electionPosition.updateMany({
+    await this.prisma.electionPosition.updateMany({
       where: {
         id: { in: positionIds },
         electionId,
@@ -560,6 +560,8 @@ export class ElectionOrchestratorService {
           where: { electionId: election.id },
           data: { isOpen: false },
         });
+
+        await this.computePositionResultsSnapshot(tx, election.id);
       }
 
       return tx.election.update({
@@ -575,6 +577,51 @@ export class ElectionOrchestratorService {
         },
       });
     });
+  }
+
+  private async computePositionResultsSnapshot(
+    tx: any,
+    electionId: string,
+  ) {
+    const positions = await tx.electionPosition.findMany({
+      where: { electionId },
+      include: { positionCandidates: true },
+    });
+
+    for (const position of positions) {
+      const votesByCandidate = await tx.vote.groupBy({
+        by: ['candidateId'],
+        where: { electionId, positionId: position.id },
+        _count: { _all: true },
+      });
+
+      const totalVotes = votesByCandidate.reduce((sum: number, item: any) => sum + item._count._all, 0);
+      const topCount = votesByCandidate.length ? Math.max(...votesByCandidate.map((item: any) => item._count._all)) : 0;
+      const leaders = votesByCandidate.filter((item: any) => item._count._all === topCount);
+      const winnerId = leaders.length === 1 ? leaders[0].candidateId : null;
+
+      await tx.positionResult.upsert({
+        where: {
+          electionId_positionId: {
+            electionId,
+            positionId: position.id,
+          },
+        },
+        update: {
+          candidateId: winnerId,
+          totalVotes,
+          isTie: leaders.length > 1,
+          computedAt: new Date(),
+        },
+        create: {
+          electionId,
+          positionId: position.id,
+          candidateId: winnerId,
+          totalVotes,
+          isTie: leaders.length > 1,
+        },
+      });
+    }
   }
 
   private getCurrentPhase(election: any, now: Date): string {

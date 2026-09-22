@@ -23,103 +23,81 @@ This project supports the core lifecycle of a youth organization platform:
 
 ## Implemented Features
 
-### 1. Authentication and access control
+The platform already includes a complete end-to-end stack for youth-organization operations, with the backend and frontend working together across public, member, and admin workflows.
 
-- User registration and login with JWT-based authentication.
-- Password hashing with bcrypt.
-- Role-aware access control for `ADMIN` and regular members.
-- Protected member and admin routes with guards and strategies.
-- Email verification required for newly registered accounts.
-- Password reset links hashed at rest, single-use, and expired after 30 minutes.
-- Access tokens expire after 15 minutes by default and rotate through HttpOnly refresh cookies.
-- Refresh tokens are hashed at rest, rotated on use, revocable, and expire after seven days by default.
-- Global and route-specific throttling plus account lockout protections.
-- Profile editing, profile picture upload, password changes, and logout flows.
-- Admin-only moderation for applications, positions, and elections.
+### 1. Authentication, identity, and account security
 
-### 2. Public content and information pages
+- User registration with verified email activation and password hashing with bcrypt.
+- Login/logout flows with JWT access tokens and HttpOnly refresh-token cookies.
+- Role-based authorization for `USER` and `ADMIN` workflows.
+- Password reset flow with hashed single-use tokens that expire after 30 minutes.
+- Session versioning, refresh rotation, revocation, and invalidation on password change.
+- Account lockout after repeated failed login attempts with configurable cooldown windows.
+- Route-level enforcement through Nest guards and protected API boundaries.
+- Profile update, avatar upload, account security changes, and user activity tracking.
+- Email delivery services for verification and password reset communications.
 
-- Public landing page with counts for news, events, resources, governors, and secretariat members.
-- Published news, upcoming events, downloadable resources, governor profiles, and secretariat content.
-- Contact form submissions with staff/admin read access.
-- Responsive public pages for home, about, contact, news, events, resources, elections, FAQ, privacy policy, and terms.
-- SEO metadata, page titles, canonical URLs, and Open Graph metadata across public pages.
-- Search engine support through `robots.txt` and `sitemap.xml`.
-- Branded 404 page and user-friendly recovery navigation.
+### 2. Member onboarding, profile, and dashboard workflows
 
-### 3. Member dashboard and participation features
+- Member registration, verification, login, logout, and secure session management.
+- Personal profile management with name, email, preferred display data, and profile image handling.
+- Member dashboard covering activity feed, elections, participation, and account information.
+- Event registration and attendance-related tracking for member submissions and approvals.
+- Community service participation records and status visibility.
+- Access to organizational resource materials from a member-facing library.
+- Election application status tracking, position visibility, and candidate listing for members.
+- Automatic refresh behavior for member-facing election and application lists.
+- Responsive member navigation and mobile-friendly dashboard experience.
 
-- Member profile management and account security views.
-- Activity history and participation tracking.
-- Event attendance and event submission tracking.
-- Community service participation records.
-- Organization resource library access.
-- Election lists, open positions, application status tracking, and candidate visibility.
-- Automatic refresh behavior so election and application data update without a manual reload.
-- Mobile-friendly hamburger navigation and responsive layouts.
+### 3. Public content, organization pages, and community information
 
-### 4. Admin dashboard and moderation capabilities
+- Public landing page with live counts for news, events, resources, governors, and secretariat members.
+- News, events, resource library, governor, and secretariat content pages.
+- Contact submission handling with admin visibility for staff moderation.
+- About, FAQ, privacy, terms, and branded 404 flows for a complete public site.
+- Search-engine metadata and sitemap/robots support for discoverability.
+- Responsive public pages designed for desktop and mobile access.
+- Canonical URL, page-title, and Open Graph metadata support across key public routes.
+- Downloadable public content and structured resource categories.
 
-- Member list management with status updates and deletion.
-- News publishing and content persistence.
-- Event creation and deletion.
-- Resource upload, creation, preview, and deletion.
-- System health and activity monitoring.
-- Election management and status lifecycle transitions.
-- Admin ability to update elections created by other users.
-- Position-level controls to open and close applications.
-- Application filtering and approval/rejection workflows.
-- Candidate/member roster management with add and delete actions.
-- Protection against deleting candidates with recorded votes.
-- Responsive admin mobile navigation with hamburger menu support.
+### 4. Admin moderation, content management, and operational controls
 
-### 5. Election lifecycle and application flow
-
-1. An election is created with a title, description, dates, status, and optional starting candidates.
-2. Five default positions are created automatically and start in the closed state:
+- Member list management including identification, status updates, and deletion controls.
+- News management with create, edit, publish, and delete operations.
+- Event creation, updating, and deletion with public-facing listing support.
+- Resource uploads and admin-side document management with MIME restrictions and file-size validation.
+- Election management, lifecycle handling, and access to application and result data.
+ One vote per member per election position is enforced by database integrity constraints, allowing one ballot across each of the five positions.
+2. The platform creates five default positions in a closed application state by default:
    - County Youth Governor
    - Secretary General
-   - Delegate for Gender and Inclusion
-   - Delegate for PWDs and Special Interests
-   - Liaison Officer
-3. An admin opens only the positions intended to accept applications.
-4. Members submit one application per open position.
-5. Admins approve or reject applications.
-6. Approved applicants are converted into candidates and assigned a position ordinal.
-7. The election is transitioned through its lifecycle by an authorized admin.
-8. Closing an election closes its positions and preserves result data.
+7. Elections are advanced through their lifecycle states using the orchestrated status workflow.
+8. Closed elections preserve result integrity while finalizing positions and vote totals.
 
-### 6. Voting and election results
+- Public voting and result pages include candidate bars, percentages, position labels, and winner display for closed elections.
+- Admin views surface totals, application breakdowns, positions, candidates, and approved applicants.
+- Fallback polling refreshes public results every 15 seconds when WebSocket delivery is unavailable.
+- Health, readiness, and liveness endpoints for service monitoring.
+- Scheduler-driven status transitions for due and expiry lifecycle handling.
+- Live result propagation for both public-facing and admin election views.
 
-- Members vote only while an election is active and inside its configured time window.
-- Voting can require an email-delivered one-time code and short-lived voting session before submission.
-- One vote per member per election is enforced by database constraints.
-- Candidate-to-election validation prevents cross-election voting.
-- Vote activity is recorded for audit purposes.
-- Vote totals are aggregated into election results.
-- Results include total votes, candidate totals, and percentages.
-- Live result updates are propagated via WebSockets.
-- Public election views include candidate vote bars, percentage breakdowns, donut visualizations, position labels, and winner labels for closed elections.
-- Admin election views show totals, application status breakdowns, positions, candidates, and approved applicants.
-- Public fallback polling refreshes results every 15 seconds when WebSocket updates are unavailable.
+### 8. Infrastructure, reliability, and developer support
 
-### 7. Real-time updates and monitoring
+- Prisma-based schema management with migrations and seed support.
+- Database validation and migration tooling for consistent environment setup.
+- NestJS configuration and environment-based deployment patterns.
 
-- Socket.IO namespace at `/results` for live result delivery.
-- Event notifications for election status, position changes, result updates, and application changes.
-- Admin-only subscriptions for applications and system activity.
-- Authenticated subscriptions for election result updates.
-- Health, liveness, and readiness endpoints for service monitoring.
-- Scheduler support for election due and expiry transitions.
+- Public pages for home, about, contact, elections, news, events, resources, FAQ, and policy documents.
+- Member-specific dashboard and profile interfaces with account and participation management.
+- Admin dashboards for elections, moderation, content management, applications, and resource handling.
+- Next.js-based responsive UI with navigation patterns tuned for desktop and mobile use.
+- Election result and candidate display components that support both raw arrays and paginated API payloads.
+- Consent and analytics handling that keeps tracking disabled until the user opts in.
+- User-friendly error states, status transitions, and recovery paths across the application.
 
-### 8. Developer and operational support
+### 10. Current production-readiness position
 
-- Prisma migrations and seed support.
-- Database validation and migration scripts.
-- Integration with NestJS configuration and environment-based setup.
-- Rate-limited authentication routes and security-focused middleware patterns.
-- Sentry-ready backend integration and structured operational support.
-- Local static uploads with MIME allow-lists and file-size limits for resource storage.
+This project already implements the core lifecycle of a modern youth organization platform: onboarding, member participation, secure moderation, election operations, result tracking, and live public reporting. The codebase reflects a working end-to-end system with the major business flows in place, while still requiring additional hardening for full production deployment and governance review.
 
 ## Required Environment Variables
 
@@ -212,31 +190,11 @@ NEXT_PUBLIC_SITE_URL=https://www.coastalyouthparliament.org
 NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_WS_URL=http://localhost:3001
-```
-
-Analytics remain disabled until `NEXT_PUBLIC_GA_ID` is configured and the visitor explicitly opts in.
-
-## Verification Commands
-
-### Backend
-
 ```bash
 npm run build
 npm test -- --runInBand
 npm run test:cov
 npm run test:e2e
-npm run db:validate
-```
-
-### Frontend
-
-```bash
-npm run build
-```
-
-The automated test coverage currently includes:
-
-- authentication and role-guard behavior
 - voting validation and vote limits
 - database URL handling
 - election creation and initialization workflows

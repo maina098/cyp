@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import './admin.css'
-import { AdminNewsPost, createAdminNews, getAdminNews, updateAdminNews } from '@/lib/api'
+import { AdminNewsPost, ApiError, createAdminNews, getAdminNews, updateAdminNews } from '@/lib/api'
 import { API_BASE } from '@/lib/api-base'
 import { WS_BASE } from '@/lib/api-base'
 import { io } from 'socket.io-client'
@@ -53,6 +53,7 @@ export default function AdminDashboard() {
   const [candidateBio, setCandidateBio] = useState('')
   const [electionStatus, setElectionStatus] = useState<ElectionStatus>('open')
   const [electionStatusMessage, setElectionStatusMessage] = useState('')
+  const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [electionForm, setElectionForm] = useState({ title: '', description: '', startsAt: '', endsAt: '' })
   const [blogForm, setBlogForm] = useState({
     title: '',
@@ -90,6 +91,11 @@ export default function AdminDashboard() {
         const [electionResult, applicationResult, eventResult, resourceResult, healthResult, memberResult, activityResult, submissionResult, newsResult] = await Promise.allSettled([
           getElections(), getAdminApplications(token), getAdminEvents(token), getAdminResources(token), getSystemHealth(), getAdminMembers(token), getSystemActivity(token), getMemberEventSubmissions(token), getAdminNews(token),
         ])
+        const failedLoads = [applicationResult, eventResult, resourceResult, memberResult, activityResult, submissionResult, newsResult]
+          .filter((result) => result.status === 'rejected').length
+        if (failedLoads > 0) {
+          setAdminMessage({ type: 'error', text: `${failedLoads} admin data source${failedLoads === 1 ? '' : 's'} could not be loaded. Refresh after checking the API.` })
+        }
         const electionData = electionResult.status === 'fulfilled' ? electionResult.value : []
         const applicationData = applicationResult.status === 'fulfilled' ? applicationResult.value : []
         const eventData = eventResult.status === 'fulfilled' ? eventResult.value : []
@@ -170,8 +176,13 @@ export default function AdminDashboard() {
   const updateMemberRole = async (memberId: string, role: string) => {
     const token = 'cookie-session'
     if (!token) return
-    const updated = await updateAdminMemberRole(token, memberId, role)
-    if (updated) setMembers((current) => current.map((member) => member.id === memberId ? { ...member, role: updated.role } : member))
+    try {
+      const updated = await updateAdminMemberRole(token, memberId, role)
+      setMembers((current) => current.map((member) => member.id === memberId ? { ...member, role: updated.role } : member))
+      setAdminMessage({ type: 'success', text: 'Member role updated.' })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to update member role.' })
+    }
   }
 
   const updateApplicationStatus = async (applicationId: string, status: ElectionApplication['status']) => {
@@ -179,82 +190,130 @@ export default function AdminDashboard() {
     if (!token) return
     const application = liveApplications.find((item) => item.id === applicationId)
     if (!application) return
-    const result = status === 'approved'
-      ? await approveElectionApplication(token, application.electionId, applicationId)
-      : status === 'rejected'
-        ? await rejectElectionApplication(token, application.electionId, applicationId)
-        : await updateElectionApplicationStatus(token, applicationId, status)
-    if (result.success) setLiveApplications(await getAdminApplications(token))
+    try {
+      const result = status === 'approved'
+        ? await approveElectionApplication(token, application.electionId, applicationId)
+        : status === 'rejected'
+          ? await rejectElectionApplication(token, application.electionId, applicationId)
+          : await updateElectionApplicationStatus(token, applicationId, status)
+      if (!result.success) throw new Error('error' in result && result.error ? result.error : 'Unable to update application.')
+      setLiveApplications(await getAdminApplications(token))
+      setAdminMessage({ type: 'success', text: `Application ${status}.` })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'Unable to update application.' })
+    }
   }
 
   const updateApplicationAccess = async (position: ElectionPosition) => {
     const token = 'cookie-session'
     if (!token || !selectedElectionId) return
-    const result = position.isOpen
-      ? await closeApplications(token, selectedElectionId, position.id)
-      : await openApplications(token, selectedElectionId, position.id)
-    if (result.success) {
+    try {
+      const result = position.isOpen
+        ? await closeApplications(token, selectedElectionId, position.id)
+        : await openApplications(token, selectedElectionId, position.id)
+      if (!result.success) throw new Error(result.error || 'Unable to update application access.')
       setApplicationPositions((current) => current.map((item) => item.id === position.id ? { ...item, isOpen: !position.isOpen } : item))
       const [applications, elections] = await Promise.all([getAdminApplications(token), getElections()])
       setLiveApplications(applications)
       setElections(elections as ElectionRecord[])
+      setAdminMessage({ type: 'success', text: `Applications ${position.isOpen ? 'closed' : 'opened'} for ${position.title}.` })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'Unable to update application access.' })
     }
   }
 
   const reviewMemberSubmission = async (submissionId: string, status: 'APPROVED' | 'REJECTED') => {
     const token = 'cookie-session'
     if (!token) return
-    const updated = await updateMemberEventSubmissionStatus(token, submissionId, status)
-    if (updated) setMemberSubmissions((current) => current.map((item) => item.id === submissionId ? { ...item, status } : item))
+    try {
+      await updateMemberEventSubmissionStatus(token, submissionId, status)
+      setMemberSubmissions((current) => current.map((item) => item.id === submissionId ? { ...item, status } : item))
+      setAdminMessage({ type: 'success', text: `Submission ${status.toLowerCase()}.` })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to review submission.' })
+    }
   }
 
   const createNewElection = async () => {
     const token = 'cookie-session'
     if (!token || !electionForm.title || !electionForm.startsAt || !electionForm.endsAt) return
-    const created = await createElection(token, { ...electionForm, status: 'draft', candidates: [] })
-    if (created) {
+    try {
+      const created = await createElection(token, { ...electionForm, status: 'draft', candidates: [] })
+      if (!created) throw new Error('Unable to create election.')
       setElections((current) => [created as ElectionRecord, ...current])
       setSelectedElectionId(created.id)
       setElectionStatus('draft')
       setElectionForm({ title: '', description: '', startsAt: '', endsAt: '' })
+      setAdminMessage({ type: 'success', text: 'Election created.' })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to create election.' })
     }
   }
 
   const addCandidate = async () => {
     const token = 'cookie-session'
     if (!token || !selectedElectionId || !candidateName.trim()) return
-    const candidate = await addElectionCandidate(token, selectedElectionId, { name: candidateName, bio: candidateBio })
-    if (candidate) {
+    try {
+      const candidate = await addElectionCandidate(token, selectedElectionId, { name: candidateName, bio: candidateBio })
+      if (!candidate) throw new Error('Unable to add candidate.')
       setElections((current) => current.map((election) => election.id === selectedElectionId ? { ...election, candidates: [...election.candidates, candidate] } : election))
       setCandidateName('')
       setCandidateBio('')
+      setAdminMessage({ type: 'success', text: 'Candidate added.' })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to add candidate.' })
     }
   }
 
   const removeCandidate = async (candidateId: string) => {
     const token = 'cookie-session'
     if (!token || !selectedElectionId) return
-    const result = await deleteElectionCandidate(token, selectedElectionId, candidateId)
-    if (result?.success) setElections((current) => current.map((election) => election.id === selectedElectionId ? { ...election, candidates: election.candidates.filter((candidate) => candidate.id !== candidateId) } : election))
+    try {
+      const result = await deleteElectionCandidate(token, selectedElectionId, candidateId)
+      if (!result?.success) throw new Error('Unable to remove candidate.')
+      setElections((current) => current.map((election) => election.id === selectedElectionId ? { ...election, candidates: election.candidates.filter((candidate) => candidate.id !== candidateId) } : election))
+      setAdminMessage({ type: 'success', text: 'Candidate removed.' })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to remove candidate.' })
+    }
   }
 
   const addEvent = async () => {
     const token = 'cookie-session'
     if (!token || !eventForm.title || !eventForm.date) return
-    const created = await createAdminEvent(token, eventForm)
-    if (created) { setEvents((current) => [...current, created].sort((a, b) => a.date.localeCompare(b.date))); setEventForm({ title: '', description: '', location: '', date: '', status: 'UPCOMING' }) }
+    try {
+      const created = await createAdminEvent(token, eventForm)
+      setEvents((current) => [...current, created].sort((a, b) => a.date.localeCompare(b.date)))
+      setEventForm({ title: '', description: '', location: '', date: '', status: 'UPCOMING' })
+      setAdminMessage({ type: 'success', text: 'Event created.' })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to create event.' })
+    }
   }
 
   const addResource = async () => {
     const token = 'cookie-session'
     if (!token || !resourceForm.title || !resourceForm.file) return
-    const uploaded = await uploadAdminResource(token, resourceForm.file)
-    const created = uploaded ? await createAdminResource(token, { title: resourceForm.title, description: resourceForm.description, fileUrl: uploaded.url, category: resourceForm.category }) : null
-    if (created) { setResources((current) => [created, ...current]); setResourceForm({ title: '', description: '', file: null, category: 'Reports' }) }
+    try {
+      const uploaded = await uploadAdminResource(token, resourceForm.file)
+      if (!uploaded) throw new Error('Unable to upload resource file.')
+      const created = await createAdminResource(token, { title: resourceForm.title, description: resourceForm.description, fileUrl: uploaded.url, category: resourceForm.category })
+      setResources((current) => [created, ...current])
+      setResourceForm({ title: '', description: '', file: null, category: 'Reports' })
+      setAdminMessage({ type: 'success', text: 'Resource created.' })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'Unable to create resource.' })
+    }
   }
 
-  const removeEvent = async (id: string) => { const token = 'cookie-session'; if (await deleteAdminEvent(token, id)) setEvents((current) => current.filter((item) => item.id !== id)) }
-  const removeResource = async (id: string) => { const token = 'cookie-session'; if (await deleteAdminResource(token, id)) setResources((current) => current.filter((item) => item.id !== id)) }
+  const removeEvent = async (id: string) => {
+    try { await deleteAdminEvent('cookie-session', id); setEvents((current) => current.filter((item) => item.id !== id)); setAdminMessage({ type: 'success', text: 'Event deleted.' }) }
+    catch (error) { setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to delete event.' }) }
+  }
+  const removeResource = async (id: string) => {
+    try { await deleteAdminResource('cookie-session', id); setResources((current) => current.filter((item) => item.id !== id)); setAdminMessage({ type: 'success', text: 'Resource deleted.' }) }
+    catch (error) { setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to delete resource.' }) }
+  }
 
   const handlePublishBlog = async () => {
     if (!blogForm.title.trim() || !blogForm.content.trim()) {
@@ -265,13 +324,17 @@ export default function AdminDashboard() {
     const summary = blogForm.summary.trim() || blogForm.content.trim().slice(0, 140)
     const data = { title, summary, content: blogForm.content.trim(), category: blogForm.category, published: true }
     const token = 'cookie-session'
-    const saved = editingPostId
-      ? await updateAdminNews(token, editingPostId, data)
-      : await createAdminNews(token, { ...data, slug: `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now()}` })
-    if (!saved) return
-    setBlogPosts((current) => editingPostId ? current.map((post) => post.id === saved.id ? saved : post) : [saved, ...current])
-    setEditingPostId(null)
-    setBlogForm({ title: '', summary: '', content: '', category: 'News', author: 'Admin Team' })
+    try {
+      const saved = editingPostId
+        ? await updateAdminNews(token, editingPostId, data)
+        : await createAdminNews(token, { ...data, slug: `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now()}` })
+      setBlogPosts((current) => editingPostId ? current.map((post) => post.id === saved.id ? saved : post) : [saved, ...current])
+      setEditingPostId(null)
+      setBlogForm({ title: '', summary: '', content: '', category: 'News', author: 'Admin Team' })
+      setAdminMessage({ type: 'success', text: editingPostId ? 'News post updated.' : 'News post published.' })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to save news post.' })
+    }
   }
 
   const editBlogPost = (post: AdminNewsPost) => {
@@ -374,6 +437,8 @@ export default function AdminDashboard() {
             <div className="user-avatar">{user?.name?.charAt(0)?.toUpperCase() || 'A'}</div>
           </div>
         </header>
+
+        {adminMessage && <p className={`inline-message ${adminMessage.type}`} role="status">{adminMessage.text}</p>}
 
         {activeMenu === 'dashboard' && (
           <>

@@ -14,13 +14,16 @@ exports.AdminService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma.service");
 const results_gateway_1 = require("../results/results.gateway");
+const audit_service_1 = require("../common/audit.service");
 let AdminService = AdminService_1 = class AdminService {
     prisma;
     resultsGateway;
+    auditService;
     logger = new common_1.Logger(AdminService_1.name);
-    constructor(prisma, resultsGateway) {
+    constructor(prisma, resultsGateway, auditService) {
         this.prisma = prisma;
         this.resultsGateway = resultsGateway;
+        this.auditService = auditService;
     }
     async getNews(page = 1, limit = 20) {
         this.logger.debug(`Fetching news items - page ${page}, limit ${limit}`);
@@ -44,19 +47,37 @@ let AdminService = AdminService_1 = class AdminService {
         };
     }
     async createNews(data) {
-        return this.prisma.news.create({ data: { ...data, published: data.published ?? true } });
+        const created = await this.prisma.news.create({ data: { ...data, published: data.published ?? true } });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'news_created',
+            details: `Created news item "${data.title}"`,
+        });
+        return created;
     }
     async updateNews(id, data) {
         const item = await this.prisma.news.findUnique({ where: { id } });
         if (!item)
             throw new common_1.NotFoundException('News item not found');
-        return this.prisma.news.update({ where: { id }, data });
+        const updated = await this.prisma.news.update({ where: { id }, data });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'news_updated',
+            details: `Updated news item "${data.title ?? item.title}"`,
+        });
+        return updated;
     }
     async deleteNews(id) {
         const item = await this.prisma.news.findUnique({ where: { id } });
         if (!item)
             throw new common_1.NotFoundException('News item not found');
-        return this.prisma.news.delete({ where: { id } });
+        const deleted = await this.prisma.news.delete({ where: { id } });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'news_deleted',
+            details: `Deleted news item "${item.title}"`,
+        });
+        return deleted;
     }
     async getEvents() {
         return this.prisma.event.findMany({
@@ -87,6 +108,13 @@ let AdminService = AdminService_1 = class AdminService {
             data: { status },
             include: { user: { select: { id: true, name: true, email: true } }, event: true },
         });
+        await this.auditService.log({
+            userId: submission.userId,
+            email: submission.user.email,
+            name: submission.user.name,
+            action: `event_submission_${status.toLowerCase()}`,
+            details: `${status} activity submission for ${submission.event.title}`,
+        });
         await this.prisma.userActivity.create({
             data: {
                 userId: submission.userId,
@@ -107,37 +135,73 @@ let AdminService = AdminService_1 = class AdminService {
         });
     }
     async createEvent(data) {
-        return this.prisma.event.create({ data });
+        const created = await this.prisma.event.create({ data });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'event_created',
+            details: `Created event "${data.title}"`,
+        });
+        return created;
     }
     async updateEvent(id, data) {
         const item = await this.prisma.event.findUnique({ where: { id } });
         if (!item)
             throw new common_1.NotFoundException('Event not found');
-        return this.prisma.event.update({ where: { id }, data });
+        const updated = await this.prisma.event.update({ where: { id }, data });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'event_updated',
+            details: `Updated event "${data.title ?? item.title}"`,
+        });
+        return updated;
     }
     async deleteEvent(id) {
         const item = await this.prisma.event.findUnique({ where: { id } });
         if (!item)
             throw new common_1.NotFoundException('Event not found');
-        return this.prisma.event.delete({ where: { id } });
+        const deleted = await this.prisma.event.delete({ where: { id } });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'event_deleted',
+            details: `Deleted event "${item.title}"`,
+        });
+        return deleted;
     }
     async getResources() {
         return this.prisma.resource.findMany();
     }
     async createResource(data) {
-        return this.prisma.resource.create({ data });
+        const created = await this.prisma.resource.create({ data });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'resource_created',
+            details: `Created resource "${data.title}"`,
+        });
+        return created;
     }
     async updateResource(id, data) {
         const item = await this.prisma.resource.findUnique({ where: { id } });
         if (!item)
             throw new common_1.NotFoundException('Resource not found');
-        return this.prisma.resource.update({ where: { id }, data });
+        const updated = await this.prisma.resource.update({ where: { id }, data });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'resource_updated',
+            details: `Updated resource "${data.title ?? item.title}"`,
+        });
+        return updated;
     }
     async deleteResource(id) {
         const item = await this.prisma.resource.findUnique({ where: { id } });
         if (!item)
             throw new common_1.NotFoundException('Resource not found');
-        return this.prisma.resource.delete({ where: { id } });
+        const deleted = await this.prisma.resource.delete({ where: { id } });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'resource_deleted',
+            details: `Deleted resource "${item.title}"`,
+        });
+        return deleted;
     }
     async createPosition(electionId, data) {
         const election = await this.prisma.election.findUnique({ where: { id: electionId } });
@@ -186,6 +250,11 @@ let AdminService = AdminService_1 = class AdminService {
             data: { isOpen: true },
             include: { applications: true },
         });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'position_opened',
+            details: `Opened applications for position ${position.title ?? positionId} in election ${electionId}`,
+        });
         this.resultsGateway.broadcastPositionStatusChange(electionId, updated);
         return updated;
     }
@@ -200,6 +269,11 @@ let AdminService = AdminService_1 = class AdminService {
             where: { id: positionId },
             data: { isOpen: false },
             include: { applications: true },
+        });
+        await this.auditService.log({
+            userId: 'system-admin',
+            action: 'position_closed',
+            details: `Closed applications for position ${position.title ?? positionId} in election ${electionId}`,
         });
         this.resultsGateway.broadcastPositionStatusChange(electionId, updated);
         return updated;
@@ -380,7 +454,7 @@ let AdminService = AdminService_1 = class AdminService {
         if (!application) {
             throw new common_1.NotFoundException('Application not found');
         }
-        return this.prisma.electionApplication.update({
+        const updated = await this.prisma.electionApplication.update({
             where: { id: applicationId },
             data: { status },
             include: {
@@ -389,12 +463,21 @@ let AdminService = AdminService_1 = class AdminService {
                 election: true,
             },
         });
+        await this.auditService.log({
+            userId: application.userId || 'system-admin',
+            email: application.email,
+            name: application.name,
+            action: 'application_status_changed',
+            details: `Updated application ${application.id} to ${status}`,
+        });
+        return updated;
     }
 };
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = AdminService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        results_gateway_1.ResultsGateway])
+        results_gateway_1.ResultsGateway,
+        audit_service_1.AuditService])
 ], AdminService);
 //# sourceMappingURL=admin.service.js.map

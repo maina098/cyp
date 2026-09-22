@@ -33,17 +33,29 @@ export class VotesService {
           throw new ForbiddenException('Outside voting window');
         }
 
-        // Verify candidate exists
-        const candidate = await tx.candidate.findUnique({
-          where: { id: castVoteDto.candidateId },
+        if (!castVoteDto?.positionId) {
+          throw new BadRequestException('Position id is required to cast a vote');
+        }
+
+        const candidateFinder = tx.candidate.findFirst ?? tx.candidate.findUnique;
+        const candidate = await candidateFinder.call(tx.candidate, {
+          where: {
+            id: castVoteDto.candidateId,
+            electionId,
+            positionId: castVoteDto.positionId,
+          },
         });
 
         if (!candidate) {
-          throw new NotFoundException('Candidate not found');
+          throw new BadRequestException('Candidate does not belong to the chosen position in this election');
         }
 
         if (candidate.electionId !== electionId) {
           throw new ForbiddenException('Candidate does not belong to this election');
+        }
+
+        if (candidate.positionId !== castVoteDto.positionId) {
+          throw new BadRequestException('Candidate does not belong to the chosen position in this election');
         }
 
         // Fetch voter details for audit logging
@@ -51,12 +63,12 @@ export class VotesService {
           ? await tx.user.findUnique({ where: { id: voterId } })
           : null;
 
-        // Create vote (unique constraint prevents duplicates)
+        // Create vote; uniqueness is enforced per election + position + voter
         const vote = await tx.vote.create({
           data: {
             electionId,
             candidateId: castVoteDto.candidateId,
-            positionId: candidate.positionId,
+            positionId: castVoteDto.positionId,
             voterId,
           },
         });

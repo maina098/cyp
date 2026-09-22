@@ -23,6 +23,23 @@ const swagger_1 = require("@nestjs/swagger");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const users_dto_1 = require("./users.dto");
 const users_service_1 = require("./users.service");
+const allowedMemberUploadMimes = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+function normalizeUploadName(fileName) {
+    return fileName
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-zA-Z0-9._-]/g, '')
+        .slice(0, 120)
+        || 'upload';
+}
 const uploadStorage = (0, multer_1.diskStorage)({
     destination: (_request, _file, callback) => {
         const destination = './uploads/member-submissions';
@@ -100,7 +117,10 @@ __decorate([
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
         storage: uploadStorage,
         limits: { fileSize: 5 * 1024 * 1024 },
-        fileFilter: (_request, file, callback) => callback(null, file.mimetype.startsWith('image/')),
+        fileFilter: (_request, file, callback) => {
+            const allowed = file.mimetype.startsWith('image/') && allowedMemberUploadMimes.has(file.mimetype);
+            callback(allowed ? null : new Error('Image uploads must be JPG, PNG, GIF, or WebP'), allowed);
+        },
     })),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.UploadedFile)()),
@@ -113,7 +133,10 @@ __decorate([
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
         storage: uploadStorage,
         limits: { fileSize: 10 * 1024 * 1024 },
-        fileFilter: (_request, file, callback) => callback(null, /^(image\/|application\/pdf$|application\/msword$|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document$)/.test(file.mimetype)),
+        fileFilter: (_request, file, callback) => {
+            const allowed = allowedMemberUploadMimes.has(file.mimetype) || file.mimetype.startsWith('image/');
+            callback(allowed ? null : new Error('Unsupported file type'), allowed);
+        },
     })),
     __param(0, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),

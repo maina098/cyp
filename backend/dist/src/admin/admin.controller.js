@@ -24,6 +24,25 @@ const throttler_1 = require("@nestjs/throttler");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const admin_service_1 = require("./admin.service");
+const allowedResourceMimes = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'video/mp4',
+    'video/webm',
+]);
+function normalizeUploadName(fileName) {
+    return fileName
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-zA-Z0-9._-]/g, '')
+        .slice(0, 120)
+        || 'upload';
+}
 let AdminController = class AdminController {
     adminService;
     constructor(adminService) {
@@ -220,10 +239,13 @@ __decorate([
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
         storage: (0, multer_1.diskStorage)({
             destination: (_request, _file, callback) => { (0, fs_1.mkdirSync)('./uploads/resources', { recursive: true }); callback(null, './uploads/resources'); },
-            filename: (_request, file, callback) => callback(null, `${(0, crypto_1.randomUUID)()}${(0, path_1.extname)(file.originalname).toLowerCase()}`),
+            filename: (_request, file, callback) => callback(null, `${(0, crypto_1.randomUUID)()}-${normalizeUploadName(file.originalname)}${(0, path_1.extname)(file.originalname).toLowerCase()}`),
         }),
         limits: { fileSize: 25 * 1024 * 1024 },
-        fileFilter: (_request, file, callback) => callback(null, /^(image\/|application\/pdf$|application\/msword$|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document$|video\/)/.test(file.mimetype)),
+        fileFilter: (_request, file, callback) => {
+            const allowed = allowedResourceMimes.has(file.mimetype) || /^(image\/|video\/|application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/.test(file.mimetype);
+            callback(allowed ? null : new Error('Unsupported file type'), allowed);
+        },
     })),
     __param(0, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),

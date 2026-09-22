@@ -53,9 +53,10 @@ let ResultsGateway = ResultsGateway_1 = class ResultsGateway {
             ?.slice('cyp_session='.length);
         const token = cookieToken;
         if (!token) {
-            this.logger.warn(`Client ${client.id} rejected: missing token`);
-            client.emit('error', { message: 'Unauthorized: Authentication required' });
-            client.disconnect();
+            client.data.user = null;
+            client.data.isPublic = true;
+            this.totalConnections++;
+            this.logger.log(`Client ${client.id} connected as public observer`);
             return;
         }
         try {
@@ -75,18 +76,20 @@ let ResultsGateway = ResultsGateway_1 = class ResultsGateway {
         }
     }
     handleDisconnect(client) {
-        if (client.data.user) {
+        if (this.totalConnections > 0) {
             this.totalConnections--;
+        }
+        if (client.data.user) {
             this.logger.log(`Client ${client.id} disconnected (user: ${client.data.user.email})`);
+        }
+        else {
+            this.logger.log(`Client ${client.id} disconnected as public observer`);
         }
         this.connectedClients.delete(client.id);
     }
     handleSubscribe(electionId, client) {
         if (!electionId) {
             return { ok: false, error: 'Election ID required' };
-        }
-        if (!client.data.user) {
-            return { ok: false, error: 'Unauthorized' };
         }
         client.join(`election:${electionId}`);
         this.trackClientSubscription(client.id, `election:${electionId}`);

@@ -68,7 +68,7 @@ export class ElectionsController {
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update election status' })
+  @ApiOperation({ summary: 'Update election status (deprecated; use /elections/:id/transition-status)' })
   updateStatus(
     @Param('id') id: string,
     @Body() body: { status: 'draft' | 'scheduled' | 'active' | 'closed' },

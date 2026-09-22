@@ -40,14 +40,25 @@ let VotesService = VotesService_1 = class VotesService {
                 if (now < election.startsAt || now > election.endsAt) {
                     throw new common_1.ForbiddenException('Outside voting window');
                 }
-                const candidate = await tx.candidate.findUnique({
-                    where: { id: castVoteDto.candidateId },
+                if (!castVoteDto?.positionId) {
+                    throw new common_1.BadRequestException('Position id is required to cast a vote');
+                }
+                const candidateFinder = tx.candidate.findFirst ?? tx.candidate.findUnique;
+                const candidate = await candidateFinder.call(tx.candidate, {
+                    where: {
+                        id: castVoteDto.candidateId,
+                        electionId,
+                        positionId: castVoteDto.positionId,
+                    },
                 });
                 if (!candidate) {
-                    throw new common_1.NotFoundException('Candidate not found');
+                    throw new common_1.BadRequestException('Candidate does not belong to the chosen position in this election');
                 }
                 if (candidate.electionId !== electionId) {
                     throw new common_1.ForbiddenException('Candidate does not belong to this election');
+                }
+                if (candidate.positionId !== castVoteDto.positionId) {
+                    throw new common_1.BadRequestException('Candidate does not belong to the chosen position in this election');
                 }
                 const voter = tx.user
                     ? await tx.user.findUnique({ where: { id: voterId } })
@@ -56,7 +67,7 @@ let VotesService = VotesService_1 = class VotesService {
                     data: {
                         electionId,
                         candidateId: castVoteDto.candidateId,
-                        positionId: candidate.positionId,
+                        positionId: castVoteDto.positionId,
                         voterId,
                     },
                 });

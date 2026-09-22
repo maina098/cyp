@@ -30,6 +30,12 @@ export const MEMBER_STORAGE_KEY = 'cyp_members';
 export const APPLICATION_STORAGE_KEY = 'cyp_member_applications';
 export const BLOG_STORAGE_KEY = 'cyp_blog_posts';
 
+const storageFallbackEnabled = process.env.NEXT_PUBLIC_ENABLE_STORAGE_FALLBACK === 'true';
+
+// This module is kept as a legacy browser fallback only. The canonical content source
+// for live admin data is the backend API; localStorage should never be treated as the
+// authoritative system-of-record.
+
 const defaultMembers: MemberRecord[] = [
   { id: 'm-101', name: 'Amina Mwangangi', email: 'amina@cyp.org', role: 'Member', status: 'active', joinedAt: '2025-01-14' },
   { id: 'm-102', name: 'Joel Kivuva', email: 'joel@cyp.org', role: 'Secretary', status: 'active', joinedAt: '2025-02-07' },
@@ -79,6 +85,7 @@ const defaultBlogPosts: BlogPost[] = [
 
 function readStorage<T>(key: string, fallback: T[]): T[] {
   if (typeof window === 'undefined') return fallback;
+  if (!storageFallbackEnabled) return fallback;
 
   try {
     const raw = window.localStorage.getItem(key);
@@ -103,19 +110,26 @@ export function getStoredBlogPosts(): BlogPost[] {
 }
 
 export function persistMembers(members: MemberRecord[]) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !storageFallbackEnabled) return;
   window.localStorage.setItem(MEMBER_STORAGE_KEY, JSON.stringify(members));
 }
 
 export function persistApplications(applications: MemberApplication[]) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !storageFallbackEnabled) return;
   window.localStorage.setItem(APPLICATION_STORAGE_KEY, JSON.stringify(applications));
 }
 
 export function persistBlogPosts(posts: BlogPost[]) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !storageFallbackEnabled) return;
   window.localStorage.setItem(BLOG_STORAGE_KEY, JSON.stringify(posts));
   window.dispatchEvent(new CustomEvent('cyp-content-updated'));
+}
+
+export function clearStoredContent() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(MEMBER_STORAGE_KEY);
+  window.localStorage.removeItem(APPLICATION_STORAGE_KEY);
+  window.localStorage.removeItem(BLOG_STORAGE_KEY);
 }
 
 export function createBlogPost(input: { title: string; summary: string; content: string; category: string; author: string; }): BlogPost {

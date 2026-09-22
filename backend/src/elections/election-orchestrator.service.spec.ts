@@ -50,6 +50,19 @@ describe('ElectionOrchestratorService', () => {
     expect(prisma.$transaction.mock.calls[0][0]).toBeDefined();
   });
 
+  it('requires the election to be active before opening positions for applications', async () => {
+    const prisma = {
+      election: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'election-1', status: 'draft', createdBy: 'owner-1' }),
+      },
+    } as any;
+    const service = new ElectionOrchestratorService(prisma, {} as any);
+
+    await expect(service.openPositionsForApplications('election-1', ['position-1'], 'owner-1', 'ADMIN')).rejects.toThrow(
+      'Election must be active before positions can open for applications or voting.',
+    );
+  });
+
   it('approves five applicants and assigns each candidate to its position ordinal', async () => {
     const gateway = { broadcastApplicationStatusUpdate: jest.fn() } as any;
     const createdCandidates: any[] = [];

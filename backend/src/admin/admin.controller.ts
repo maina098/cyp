@@ -10,6 +10,27 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard, Roles } from '../common/guards/roles.guard';
 import { AdminService } from './admin.service';
 
+const allowedResourceMimes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'video/mp4',
+  'video/webm',
+]);
+
+function normalizeUploadName(fileName: string) {
+  return fileName
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-zA-Z0-9._-]/g, '')
+    .slice(0, 120)
+    || 'upload';
+}
+
 @ApiTags('admin')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -88,10 +109,13 @@ export class AdminController {
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
       destination: (_request, _file, callback) => { mkdirSync('./uploads/resources', { recursive: true }); callback(null, './uploads/resources'); },
-      filename: (_request, file, callback) => callback(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`),
+      filename: (_request, file, callback) => callback(null, `${randomUUID()}-${normalizeUploadName(file.originalname)}${extname(file.originalname).toLowerCase()}`),
     }),
     limits: { fileSize: 25 * 1024 * 1024 },
-      fileFilter: (_request, file, callback) => callback(null, /^(image\/|application\/pdf$|application\/msword$|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document$|video\/)/.test(file.mimetype)),
+      fileFilter: (_request, file, callback) => {
+        const allowed = allowedResourceMimes.has(file.mimetype) || /^(image\/|video\/|application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/.test(file.mimetype);
+        callback(allowed ? null : new Error('Unsupported file type'), allowed);
+      },
   }))
   uploadResource(@UploadedFile() file: { filename: string; originalname: string; mimetype: string; size: number } | undefined) {
     if (!file) throw new BadRequestException('A resource file is required');

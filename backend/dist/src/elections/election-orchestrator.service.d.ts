@@ -288,5 +288,6 @@ export declare class ElectionOrchestratorService {
     }>;
     private isValidStatusTransition;
     private executeStatusTransition;
+    private computePositionResultsSnapshot;
     private getCurrentPhase;
 }

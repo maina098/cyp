@@ -15,6 +15,25 @@ import {
 } from './users.dto';
 import { UsersService } from './users.service';
 
+const allowedMemberUploadMimes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+
+function normalizeUploadName(fileName: string) {
+  return fileName
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-zA-Z0-9._-]/g, '')
+    .slice(0, 120)
+    || 'upload';
+}
+
 const uploadStorage = diskStorage({
   destination: (_request, _file, callback) => {
     const destination = './uploads/member-submissions';
@@ -45,7 +64,10 @@ export class UsersController {
   @UseInterceptors(FileInterceptor('file', {
     storage: uploadStorage,
     limits: { fileSize: 5 * 1024 * 1024 },
-    fileFilter: (_request, file, callback) => callback(null, file.mimetype.startsWith('image/')),
+    fileFilter: (_request, file, callback) => {
+      const allowed = file.mimetype.startsWith('image/') && allowedMemberUploadMimes.has(file.mimetype);
+      callback(allowed ? null : new Error('Image uploads must be JPG, PNG, GIF, or WebP'), allowed);
+    },
   }))
   uploadProfilePicture(@Request() req: any, @UploadedFile() file: { filename: string } | undefined) {
     if (!file) throw new BadRequestException('An image file is required');
@@ -56,7 +78,10 @@ export class UsersController {
   @UseInterceptors(FileInterceptor('file', {
     storage: uploadStorage,
     limits: { fileSize: 10 * 1024 * 1024 },
-    fileFilter: (_request, file, callback) => callback(null, /^(image\/|application\/pdf$|application\/msword$|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document$)/.test(file.mimetype)),
+    fileFilter: (_request, file, callback) => {
+      const allowed = allowedMemberUploadMimes.has(file.mimetype) || file.mimetype.startsWith('image/');
+      callback(allowed ? null : new Error('Unsupported file type'), allowed);
+    },
   }))
   uploadMemberFile(@UploadedFile() file: { filename: string; originalname: string; mimetype: string; size: number } | undefined) {
     if (!file) throw new BadRequestException('A picture, PDF, or Word document is required');

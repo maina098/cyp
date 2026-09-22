@@ -1,10 +1,12 @@
 import { PrismaService } from '../prisma.service';
 import { ResultsGateway } from '../results/results.gateway';
+import { AuditService } from '../common/audit.service';
 export declare class AdminService {
     private prisma;
     private resultsGateway;
+    private auditService;
     private readonly logger;
-    constructor(prisma: PrismaService, resultsGateway: ResultsGateway);
+    constructor(prisma: PrismaService, resultsGateway: ResultsGateway, auditService: AuditService);
     getNews(page?: number, limit?: number): Promise<{
         data: {
             id: string;

@@ -19,6 +19,7 @@ describe('VotesService', () => {
   const mockCandidate = {
     id: 'candidate-123',
     electionId: 'election-123',
+    positionId: 'position-456',
     name: 'Test Candidate',
   };
 
@@ -84,7 +85,7 @@ describe('VotesService', () => {
 
       const result = await service.castVote(
         'election-123',
-        { candidateId: 'candidate-123' },
+        { candidateId: 'candidate-123', positionId: 'position-456' },
         'user-123',
       );
 
@@ -104,7 +105,7 @@ describe('VotesService', () => {
       });
 
       await expect(
-        service.castVote('nonexistent', { candidateId: 'candidate-123' }, 'user-123'),
+        service.castVote('nonexistent', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -122,7 +123,7 @@ describe('VotesService', () => {
       });
 
       await expect(
-        service.castVote('election-123', { candidateId: 'candidate-123' }, 'user-123'),
+        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -131,7 +132,7 @@ describe('VotesService', () => {
       mockPrismaService.$transaction.mockRejectedValue(prismaError);
 
       await expect(
-        service.castVote('election-123', { candidateId: 'candidate-123' }, 'user-123'),
+        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -148,8 +149,8 @@ describe('VotesService', () => {
       });
 
       await expect(
-        service.castVote('election-123', { candidateId: 'nonexistent' }, 'user-123'),
-      ).rejects.toThrow(NotFoundException);
+        service.castVote('election-123', { candidateId: 'nonexistent', positionId: 'position-456' }, 'user-123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw ForbiddenException for candidate from different election', async () => {
@@ -166,8 +167,25 @@ describe('VotesService', () => {
       });
 
       await expect(
-        service.castVote('election-123', { candidateId: 'candidate-123' }, 'user-123'),
+        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should reject a vote when the candidate does not belong to the selected position', async () => {
+      mockPrismaService.$transaction.mockImplementation(async (fn) => {
+        const mockTx = {
+          election: { findUnique: jest.fn().mockResolvedValue(mockElection) },
+          candidate: { findFirst: jest.fn().mockResolvedValue(null) },
+          vote: { create: jest.fn() },
+          electionResult: { upsert: jest.fn() },
+          userActivity: { create: jest.fn() },
+        };
+        return fn(mockTx);
+      });
+
+      await expect(
+        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
