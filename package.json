@@ -2,9 +2,10 @@
   "name": "cyp-deployment",
   "private": true,
   "scripts": {
-    "postinstall": "npm install --prefix backend --include=dev",
+    "postinstall": "npm install --prefix backend --include=dev && npm install --prefix frontend",
     "db:migrate": "npm --prefix backend run db:migrate",
-    "build": "npm --prefix backend run build",
+    "build": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build",
     "start:prod": "npm --prefix backend run start:prod"
   }
 }
