@@ -34,40 +34,52 @@ export class ElectionsService {
       throw new BadRequestException('Election start time must be in the future unless status is draft');
     }
 
-    const election = await this.prisma.election.create({
-      data: {
-        ...electionData,
-        startsAt,
-        endsAt,
-        createdBy: userId,
-        positions: {
-          create: [
-            'COUNTY YOUTH GOVERNOR',
-            'SECRETARY GENERAL',
-            'DELEGATE FOR GENDER AND INCLUSION',
-            'DELEGATE FOR PWDS AND SPECIAL INTERESTS',
-            'LIAISON OFFICER',
-          ].map((title) => ({
-            title,
-            description: `Application period for ${title} position`,
-            isOpen: false,
-            maxApplicants: 100,
-          })),
+    const election = await this.prisma.$transaction(async (tx) => {
+      const createdElection = await tx.election.create({
+        data: {
+          ...electionData,
+          startsAt,
+          endsAt,
+          createdBy: userId,
+          positions: {
+            create: [
+              'COUNTY YOUTH GOVERNOR',
+              'SECRETARY GENERAL',
+              'DELEGATE FOR GENDER AND INCLUSION',
+              'DELEGATE FOR PWDS AND SPECIAL INTERESTS',
+              'LIAISON OFFICER',
+            ].map((title) => ({
+              title,
+              description: `Application period for ${title} position`,
+              isOpen: false,
+              maxApplicants: 100,
+            })),
+          },
+          status,
         },
-        status,
-        candidates: {
-          create: candidates.map((candidate) => ({
-            name: candidate.name,
-            bio: candidate.bio,
-            photoUrl: candidate.photoUrl,
-            position: candidate.position ?? 0,
-          })),
-        },
-      },
-      include: {
-        candidates: true,
-        positions: true,
-      },
+        include: { positions: true },
+      });
+
+      await Promise.all(
+        candidates.map((candidate) => {
+          const position = createdElection.positions[candidate.position ?? 0] ?? createdElection.positions[0];
+          return tx.candidate.create({
+            data: {
+              electionId: createdElection.id,
+              positionId: position.id,
+              name: candidate.name,
+              bio: candidate.bio,
+              photoUrl: candidate.photoUrl,
+              position: candidate.position ?? 0,
+            },
+          });
+        }),
+      );
+
+      return tx.election.findUniqueOrThrow({
+        where: { id: createdElection.id },
+        include: { candidates: true, positions: true },
+      });
     });
 
     this.logger.log(`Election ${election.id} created successfully`);

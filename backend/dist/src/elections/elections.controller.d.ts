@@ -14,7 +14,7 @@ export declare class ElectionsController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -52,7 +52,7 @@ export declare class ElectionsController {
             _count: {
                 votes: number;
             };
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -86,7 +86,7 @@ export declare class ElectionsController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -117,7 +117,7 @@ export declare class ElectionsController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -159,7 +159,7 @@ export declare class ElectionsController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -214,7 +214,7 @@ export declare class ElectionsController {
             candidate: {
                 id: string;
                 name: string;
-                positionId: string | null;
+                positionId: string;
                 photoUrl: string | null;
             };
         }[];

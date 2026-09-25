@@ -13,7 +13,7 @@ export declare class ElectionsService {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -51,7 +51,7 @@ export declare class ElectionsService {
             _count: {
                 votes: number;
             };
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -85,7 +85,7 @@ export declare class ElectionsService {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -114,7 +114,7 @@ export declare class ElectionsService {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -146,7 +146,7 @@ export declare class ElectionsService {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -183,7 +183,7 @@ export declare class ElectionsService {
             candidate: {
                 id: string;
                 name: string;
-                positionId: string | null;
+                positionId: string;
                 photoUrl: string | null;
             };
         }[];

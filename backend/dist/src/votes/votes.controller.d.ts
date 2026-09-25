@@ -16,7 +16,7 @@ export declare class VotesController {
     getUserVote(electionId: string, req: any): Promise<{
         id: string;
         electionId: string;
-        positionId: string | null;
+        positionId: string;
         votedAt: Date;
         candidateId: string;
         voterId: string;
@@ -52,7 +52,7 @@ export declare class VotesController {
         } & {
             id: string;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             votedAt: Date;
             candidateId: string;
             voterId: string;

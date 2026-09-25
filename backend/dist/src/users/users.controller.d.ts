@@ -155,7 +155,7 @@ export declare class UsersController {
                 bio: string | null;
                 createdAt: Date;
                 electionId: string;
-                positionId: string | null;
+                positionId: string;
                 position: number;
                 photoUrl: string | null;
             }[];
@@ -166,7 +166,7 @@ export declare class UsersController {
                     bio: string | null;
                     createdAt: Date;
                     electionId: string;
-                    positionId: string | null;
+                    positionId: string;
                     position: number;
                     photoUrl: string | null;
                 };

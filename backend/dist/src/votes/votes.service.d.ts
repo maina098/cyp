@@ -35,7 +35,7 @@ export declare class VotesService {
     getUserVote(electionId: string, voterId: string): Promise<{
         id: string;
         electionId: string;
-        positionId: string | null;
+        positionId: string;
         votedAt: Date;
         candidateId: string;
         voterId: string;
@@ -53,7 +53,7 @@ export declare class VotesService {
         } & {
             id: string;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             votedAt: Date;
             candidateId: string;
             voterId: string;

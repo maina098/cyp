@@ -39,10 +39,12 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
             throw new common_1.BadRequestException('Candidate name is required');
         if (election.status === 'closed')
             throw new common_1.BadRequestException('Cannot add candidates to a closed election');
+        if (!data.positionId)
+            throw new common_1.BadRequestException('Candidate position is required');
         return this.prisma.candidate.create({
             data: {
                 electionId,
-                positionId: data.positionId || null,
+                positionId: data.positionId,
                 name: data.name.trim(),
                 bio: data.bio?.trim() || null,
                 photoUrl: data.photoUrl || null,

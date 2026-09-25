@@ -33,7 +33,7 @@ export declare class ElectionOrchestratorController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         }[];
@@ -77,7 +77,7 @@ export declare class ElectionOrchestratorController {
         bio: string | null;
         createdAt: Date;
         electionId: string;
-        positionId: string | null;
+        positionId: string;
         position: number;
         photoUrl: string | null;
     }>;
@@ -240,7 +240,7 @@ export declare class ElectionOrchestratorController {
             bio: string | null;
             createdAt: Date;
             electionId: string;
-            positionId: string | null;
+            positionId: string;
             position: number;
             photoUrl: string | null;
         };
