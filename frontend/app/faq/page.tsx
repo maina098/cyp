@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { SiteShell } from '@/components/site-shell';
 
 export const metadata: Metadata = {
-  title: 'FAQ | Coastal Youth Parliament',
+  title: 'Frequently Asked Questions',
   description: 'Answers about CYP membership, applications, elections, voting, and support.',
   alternates: { canonical: '/faq' },
 };

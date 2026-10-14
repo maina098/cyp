@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { getOverview, getNews, getEvents } from '@/lib/api';
 
 export const metadata: Metadata = {
-  title: 'Home',
-  description: 'Coastal Youth Parliament connects youth leadership, county collaboration, investment, and inclusive development.',
+  title: "Youth Leadership in Kenya's Coast",
+  description: "Coastal Youth Parliament brings together Kenya's six coastal counties to advance youth leadership, investment, and sustainable regional development.",
   alternates: { canonical: '/' },
 };
 
