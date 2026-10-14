@@ -13,6 +13,9 @@ export const metadata: Metadata = {
   },
   description: 'Coastal Youth Parliament connects youth leadership, county collaboration, investment, and inclusive development.',
   alternates: { canonical: '/' },
+  verification: {
+    google: 'dn4MLifhZfq6NBLfzvSETiyhV3jU73BldSO6sbK66bU',
+  },
   openGraph: {
     type: 'website',
     title: 'Coastal Youth Parliament',
