@@ -101,6 +101,21 @@ describe('AuthService', () => {
       expect(result.user.email).toBe('test@example.com');
     });
 
+    it('should allow users without a verified email to sign in', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ ...mockUser, emailVerifiedAt: null });
+      mockPrismaService.user.update.mockResolvedValue({ ...mockUser, failedAttempts: 0, lockedUntil: null });
+      mockPrismaService.userActivity.create.mockResolvedValue({});
+      mockPrismaService.refreshToken.create.mockResolvedValue({ id: 'refresh-123' });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const result = await service.login({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
+      expect(result.access_token).toBeDefined();
+    });
+
     it('should throw UnauthorizedException for non-existent user', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
 
@@ -169,8 +184,13 @@ describe('AuthService', () => {
         username: 'NewUser',
       });
 
-      expect(result.message).toContain('verify your account');
-      expect(mockEmailService.sendVerificationEmail).toHaveBeenCalled();
+      expect(result.message).toContain('now sign in');
+      expect(mockPrismaService.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ emailVerifiedAt: expect.any(Date) }),
+        }),
+      );
+      expect(mockEmailService.sendVerificationEmail).not.toHaveBeenCalled();
     });
 
     it('should throw ConflictException for existing email', async () => {

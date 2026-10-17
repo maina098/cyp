@@ -471,6 +471,35 @@
   background: #fff;
 }
 
+.dashboard-password-field {
+  position: relative;
+  display: block;
+}
+
+.dashboard-password-field input {
+  padding-right: 64px;
+}
+
+.dashboard-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--primary-accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-password-toggle:focus-visible {
+  outline: 2px solid var(--primary-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .primary-action,
 .secondary-action {
   border: 0;

@@ -11,6 +11,8 @@ export default function ResetPasswordPage() {
   const [token, setToken] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -18,7 +20,7 @@ export default function ResetPasswordPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (password.length < 12) return setMessage('Password must be at least 12 characters.')
+    if (password.length < 8) return setMessage('Password must be at least 8 characters.')
     if (password !== confirmPassword) return setMessage('Passwords do not match.')
     setLoading(true)
     const result = await resetPassword(token, password)
@@ -28,5 +30,5 @@ export default function ResetPasswordPage() {
     if (resultMessage.includes('successfully')) setTimeout(() => router.replace('/signin'), 1200)
   }
 
-  return <div className="auth-page"><div className="auth-container"><div className="auth-brand"><h1>CYP</h1><p>Coastal Youth Parliament</p></div><div className="auth-card"><div className="auth-header"><h2>Choose a new password</h2><p>Use at least 12 characters.</p></div><form onSubmit={submit} className="auth-form"><div className="form-group"><label htmlFor="password">New password</label><input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></div><div className="form-group"><label htmlFor="confirmPassword">Confirm password</label><input id="confirmPassword" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></div><button className="auth-button" disabled={loading}>{loading ? 'Updating...' : 'Update password'}</button>{message && <div className="auth-message">{message}</div>}</form><div className="auth-footer"><Link href="/signin">Back to sign in</Link></div></div></div></div>
+  return <div className="auth-page"><div className="auth-container"><div className="auth-brand"><h1>CYP</h1><p>Coastal Youth Parliament</p></div><div className="auth-card"><div className="auth-header"><h2>Choose a new password</h2><p>Use at least 8 characters.</p></div><form onSubmit={submit} className="auth-form"><div className="form-group"><label htmlFor="password">New password</label><div className="password-input-wrap"><input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required /><button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? 'Hide' : 'Show'}</button></div></div><div className="form-group"><label htmlFor="confirmPassword">Confirm password</label><div className="password-input-wrap"><input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required /><button type="button" className="password-toggle" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? 'Hide password' : 'Show password'} aria-pressed={showConfirmPassword}>{showConfirmPassword ? 'Hide' : 'Show'}</button></div></div><button className="auth-button" disabled={loading}>{loading ? 'Updating...' : 'Update password'}</button>{message && <div className="auth-message">{message}</div>}</form><div className="auth-footer"><Link href="/signin">Back to sign in</Link></div></div></div></div>
 }

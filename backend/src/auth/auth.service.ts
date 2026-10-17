@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -9,7 +9,6 @@ import { EmailService } from './email.service';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
-const EMAIL_VERIFICATION_HOURS = 24;
 const PASSWORD_RESET_MINUTES = 30;
 const ACCESS_TOKEN_TTL_SECONDS = Number(process.env.ACCESS_TOKEN_TTL_SECONDS || 900);
 const REFRESH_TOKEN_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS || 7);
@@ -60,10 +59,6 @@ export class AuthService {
 
       if (lockUntil) this.logger.warn(`Account lockout triggered for ${user.email}`);
       throw new UnauthorizedException('Invalid email or password');
-    }
-
-    if (!user.emailVerifiedAt) {
-      throw new UnauthorizedException('Please verify your email before signing in');
     }
 
     // Reset failed attempts on successful login
@@ -117,8 +112,6 @@ export class AuthService {
 
     // Hash password
     const passwordHash = await bcrypt.hash(registerDto.password, 12);
-    const verificationToken = this.createToken();
-
     // Create user (default role is USER)
     const user = await this.prisma.user.create({
       data: {
@@ -126,8 +119,7 @@ export class AuthService {
         name: registerDto.username || email.split('@')[0],
         passwordHash,
         role: 'USER',
-        emailVerificationTokenHash: this.hashToken(verificationToken),
-        emailVerificationExpiresAt: new Date(Date.now() + EMAIL_VERIFICATION_HOURS * 60 * 60 * 1000),
+        emailVerifiedAt: new Date(),
       },
     });
 
@@ -142,16 +134,9 @@ export class AuthService {
       },
     });
 
-    try {
-      await this.emailService.sendVerificationEmail(user.email, verificationToken);
-    } catch (error) {
-      this.logger.error(`Unable to send verification email to ${user.email}`, error instanceof Error ? error.stack : undefined);
-      throw new InternalServerErrorException('Registration could not be completed. Please try again later.');
-    }
-
-    this.logger.log(`User ${user.email} registered; verification required`);
+    this.logger.log(`User ${user.email} registered`);
     return {
-      message: 'Registration successful. Check your email to verify your account.',
+      message: 'Registration successful. You can now sign in.',
     };
   }
 

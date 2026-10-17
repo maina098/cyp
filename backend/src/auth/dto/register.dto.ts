@@ -9,6 +9,6 @@ export class RegisterDto {
   email: string;
 
   @IsNotEmpty()
-  @MinLength(12)
+  @MinLength(8)
   password: string;
 }
