@@ -52,7 +52,6 @@ const crypto_1 = require("crypto");
 const email_service_1 = require("./email.service");
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
-const EMAIL_VERIFICATION_HOURS = 24;
 const PASSWORD_RESET_MINUTES = 30;
 const ACCESS_TOKEN_TTL_SECONDS = Number(process.env.ACCESS_TOKEN_TTL_SECONDS || 900);
 const REFRESH_TOKEN_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS || 7);
@@ -97,9 +96,6 @@ let AuthService = AuthService_1 = class AuthService {
                 this.logger.warn(`Account lockout triggered for ${user.email}`);
             throw new common_1.UnauthorizedException('Invalid email or password');
         }
-        if (!user.emailVerifiedAt) {
-            throw new common_1.UnauthorizedException('Please verify your email before signing in');
-        }
         await this.prisma.user.update({
             where: { id: user.id },
             data: {
@@ -141,15 +137,13 @@ let AuthService = AuthService_1 = class AuthService {
             throw new common_1.ConflictException('Email already registered');
         }
         const passwordHash = await bcrypt.hash(registerDto.password, 12);
-        const verificationToken = this.createToken();
         const user = await this.prisma.user.create({
             data: {
                 email,
                 name: registerDto.username || email.split('@')[0],
                 passwordHash,
                 role: 'USER',
-                emailVerificationTokenHash: this.hashToken(verificationToken),
-                emailVerificationExpiresAt: new Date(Date.now() + EMAIL_VERIFICATION_HOURS * 60 * 60 * 1000),
+                emailVerifiedAt: new Date(),
             },
         });
         await this.prisma.userActivity.create({
@@ -161,16 +155,9 @@ let AuthService = AuthService_1 = class AuthService {
                 details: `User registered at ${new Date().toISOString()}`,
             },
         });
-        try {
-            await this.emailService.sendVerificationEmail(user.email, verificationToken);
-        }
-        catch (error) {
-            this.logger.error(`Unable to send verification email to ${user.email}`, error instanceof Error ? error.stack : undefined);
-            throw new common_1.InternalServerErrorException('Registration could not be completed. Please try again later.');
-        }
-        this.logger.log(`User ${user.email} registered; verification required`);
+        this.logger.log(`User ${user.email} registered`);
         return {
-            message: 'Registration successful. Check your email to verify your account.',
+            message: 'Registration successful. You can now sign in.',
         };
     }
     async verifyEmail(token) {

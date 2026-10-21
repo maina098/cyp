@@ -722,7 +722,7 @@ a {
 
 .leadership-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -733,20 +733,6 @@ a {
   overflow: hidden;
   box-shadow: 0 16px 32px rgba(13, 31, 44, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* Top row: First three leaders (Kibwana, Nassib Juma, Ali Kubo) split evenly */
-.leader-card:nth-child(1),
-.leader-card:nth-child(2),
-.leader-card:nth-child(3) {
-  grid-column: span 2;
-}
-
-/* Bottom row: Other three leaders split evenly */
-.leader-card:nth-child(4),
-.leader-card:nth-child(5),
-.leader-card:nth-child(6) {
-  grid-column: span 2;
 }
 
 .leader-card:hover {
@@ -763,6 +749,14 @@ a {
   background: linear-gradient(135deg, #e7eff7, #e0e7f0);
   -webkit-user-select: none;
   user-select: none;
+}
+
+.leader-image-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  font-size: 3rem;
+  font-weight: 700;
 }
 
 /* Adjust first leader (Kibwana) image to show face clearly */
