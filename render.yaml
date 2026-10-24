@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: cyp-full-stack
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    preDeployCommand: npm --prefix backend run db:migrate
+    healthCheckPath: /api/health
+    disk:
+      name: uploads
+      mountPath: /app/backend/uploads
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Set this to the existing Supabase PostgreSQL connection string in Render.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: COOKIE_SAME_SITE
+        value: lax

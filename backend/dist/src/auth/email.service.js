@@ -60,7 +60,9 @@ let EmailService = EmailService_1 = class EmailService {
         return sender;
     }
     get appUrl() {
-        return (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].replace(/\/$/, '');
+        return (process.env.FRONTEND_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000')
+            .split(',')[0]
+            .replace(/\/$/, '');
     }
     async sendVerificationEmail(email, token) {
         await this.transporter.sendMail({

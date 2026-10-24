@@ -24,6 +24,9 @@ const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:3000,http:
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+if (process.env.RENDER_EXTERNAL_URL && !allowedOrigins.includes(process.env.RENDER_EXTERNAL_URL)) {
+    allowedOrigins.push(process.env.RENDER_EXTERNAL_URL);
+}
 const publicSiteOrigin = 'https://www.coastalyouthparliament.org';
 if (!allowedOrigins.includes(publicSiteOrigin)) {
     allowedOrigins.push(publicSiteOrigin);

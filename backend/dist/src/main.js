@@ -15,7 +15,11 @@ const all_exceptions_filter_1 = require("./common/filters/all-exceptions.filter"
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const logger = new common_1.Logger('Bootstrap');
-    const apiOrigin = `http://localhost:${process.env.PORT ?? 3001}`;
+    const port = process.env.PORT ?? 3002;
+    const apiOrigin = `http://localhost:${port}`;
+    if (process.env.TRUST_PROXY === '1') {
+        app.getHttpAdapter().getInstance().set('trust proxy', 1);
+    }
     app.getHttpAdapter().getInstance().use('/uploads', express_1.default.static((0, path_1.join)(process.cwd(), 'uploads')));
     app.use((0, helmet_1.default)({
         contentSecurityPolicy: {
@@ -39,6 +43,9 @@ async function bootstrap() {
         .split(',')
         .map((origin) => origin.trim())
         .filter(Boolean);
+    if (process.env.RENDER_EXTERNAL_URL && !allowedOrigins.includes(process.env.RENDER_EXTERNAL_URL)) {
+        allowedOrigins.push(process.env.RENDER_EXTERNAL_URL);
+    }
     const publicSiteOrigin = 'https://www.coastalyouthparliament.org';
     if (!allowedOrigins.includes(publicSiteOrigin)) {
         allowedOrigins.push(publicSiteOrigin);
@@ -73,7 +80,6 @@ async function bootstrap() {
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api/docs', app, document);
-    const port = process.env.PORT ?? 3001;
     await app.listen(port);
     logger.log(`Application is running on: http://localhost:${port}`);
     logger.log(`API Documentation: http://localhost:${port}/api/docs`);

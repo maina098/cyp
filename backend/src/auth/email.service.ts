@@ -20,7 +20,9 @@ export class EmailService {
   }
 
   private get appUrl() {
-    return (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].replace(/\/$/, '');
+    return (process.env.FRONTEND_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000')
+      .split(',')[0]
+      .replace(/\/$/, '');
   }
 
   async sendVerificationEmail(email: string, token: string) {
