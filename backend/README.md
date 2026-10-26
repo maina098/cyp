@@ -108,7 +108,7 @@ Set these values in the backend deployment environment before starting the API:
 - `ACCESS_TOKEN_TTL_SECONDS`: optional access-token lifetime; defaults to `900` seconds.
 - `REFRESH_TOKEN_TTL_DAYS`: optional refresh-token lifetime; defaults to `7` days.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `MAIL_FROM`: required for verification and reset email delivery.
-- `FRONTEND_URL`: frontend origin used in verification and password-reset links.
+- `FRONTEND_URL`: comma-separated allowed browser origins; the first origin is used in verification and password-reset links. Production origins include `https://coastalyouthparliament.co.ke`, `https://www.coastalyouthparliament.co.ke`, and `https://backend.coastalyouthparliament.co.ke`.
 - `COOKIE_SAME_SITE`: set to `none` when the frontend and API are on different sites; this also requires HTTPS.
 
 After deployment, run:
@@ -117,6 +117,8 @@ After deployment, run:
 cd backend
 npm run db:migrate
 ```
+
+For the separate Render frontend service, set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` to `https://backend.coastalyouthparliament.co.ke`. These public values are embedded during the Next.js build, so redeploy the frontend after changing them.
 
 ## API Areas
 

@@ -3,11 +3,12 @@
   "private": true,
   "scripts": {
     "postinstall": "npm install --prefix backend --include=dev && npm install --prefix frontend",
-    "dev": "node deploy/start.js --local",
+    "dev:backend": "npm --prefix backend run start:dev",
+    "dev:frontend": "npm --prefix frontend run dev",
     "db:migrate": "npm --prefix backend run db:migrate",
     "build": "npm --prefix frontend run build",
     "build:backend": "npm --prefix backend run build",
-    "start:prod": "npm --prefix backend run start:prod",
-    "start:stack": "node deploy/start.js"
+    "start:backend": "npm --prefix backend run start:prod",
+    "start:frontend": "npm --prefix frontend run start"
   }
 }

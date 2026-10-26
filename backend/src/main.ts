@@ -58,10 +58,20 @@ async function bootstrap() {
   if (!allowedOrigins.includes(publicSiteOrigin)) {
     allowedOrigins.push(publicSiteOrigin);
   }
+  const coKeOrigins = [
+    'https://coastalyouthparliament.co.ke',
+    'https://www.coastalyouthparliament.co.ke',
+    'https://backend.coastalyouthparliament.co.ke',
+  ];
+  for (const origin of coKeOrigins) {
+    if (!allowedOrigins.includes(origin)) {
+      allowedOrigins.push(origin);
+    }
+  }
   const isAllowedOrigin = (origin?: string) =>
     !origin ||
     allowedOrigins.includes(origin) ||
-    /^https:\/\/(www\.)?coastalyouthparliament\.org$/.test(origin);
+    /^https:\/\/(www\.)?coastalyouthparliament\.(org|co\.ke)$/.test(origin);
 
   app.enableCors({
     origin: (origin, callback) => {
