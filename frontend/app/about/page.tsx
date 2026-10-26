@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { SiteShell } from '@/components/site-shell';
+import { LeadershipDirectory } from '@/components/leadership-directory';
 
 export const metadata: Metadata = {
   title: 'About Us',
@@ -134,40 +135,7 @@ export default function AboutPage() {
           <h2>Executive Leadership Team</h2>
         </div>
 
-        <div className="leadership-grid">
-          {topLeadership.map((leader) => (
-            <article className="leader-card" key={leader.name}>
-              {leader.image ? (
-                <img src={leader.image} alt={leader.name} className="leader-image" style={leader.imagePos ? { objectPosition: leader.imagePos } : undefined} />
-              ) : (
-                <div className="leader-image leader-image-placeholder" role="img" aria-label={leader.name}>
-                  {leader.name.replace(/^HON\.\s*/, '').split(/\s+/).map((part) => part[0]).join('')}
-                </div>
-              )}
-              <div className="leader-body">
-                <h3>{leader.name}</h3>
-                <p className="leader-title">{leader.title}</p>
-                <p>{leader.role}</p>
-              </div>
-            </article>
-          ))}
-          {leadershipTeam.map((leader) => (
-            <article className="leader-card" key={leader.name}>
-              {leader.image ? (
-                <img src={leader.image} alt={leader.name} className="leader-image" style={leader.imagePos ? { objectPosition: leader.imagePos } : undefined} />
-              ) : (
-                <div className="leader-image leader-image-placeholder" role="img" aria-label={leader.name}>
-                  {leader.name.replace(/^HON\.\s*/, '').split(/\s+/).map((part) => part[0]).join('')}
-                </div>
-              )}
-              <div className="leader-body">
-                <h3>{leader.name}</h3>
-                <p className="leader-title">{leader.title}</p>
-                <p>{leader.role}</p>
-              </div>
-            </article>
-          ))}
-        </div>
+        <LeadershipDirectory initialLeaders={[...topLeadership, ...leadershipTeam]} />
       </section>
     </SiteShell>
   );

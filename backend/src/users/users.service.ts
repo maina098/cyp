@@ -58,7 +58,7 @@ export class UsersService {
   }
 
   async getDashboard(userId: string) {
-    const [user, eventsAttended, publishedContentRead, publishedContentTotal, communityServices, recentActivity, events, resources, elections] = await Promise.all([
+    const [user, eventsAttended, publishedContentRead, publishedContentTotal, communityServices, recentActivity, events, resources, elections, broadcasts] = await Promise.all([
       this.getProfile(userId),
       this.prisma.userEventParticipation.count({ where: { userId, status: { in: ['ATTENDED', 'APPROVED'] } } }),
       this.prisma.userContentRead.count({
@@ -76,6 +76,12 @@ export class UsersService {
       this.prisma.userEventParticipation.findMany({ where: { userId }, include: { event: true }, orderBy: { createdAt: 'desc' } }),
       this.prisma.resource.findMany({ orderBy: { createdAt: 'desc' } }),
       this.getElectionOverview(userId),
+      this.prisma.memberBroadcast.findMany({
+        where: { publishedAt: { lte: new Date() } },
+        include: { createdBy: { select: { name: true } } },
+        orderBy: { publishedAt: 'desc' },
+        take: 50,
+      }),
     ]);
 
     const communityScore = communityServices.reduce((score, item) => {
@@ -97,6 +103,7 @@ export class UsersService {
       events,
       resources,
       elections,
+      broadcasts,
     };
   }
 

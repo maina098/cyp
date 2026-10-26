@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import './admin.css'
-import { AdminNewsPost, ApiError, createAdminNews, getAdminNews, updateAdminNews } from '@/lib/api'
+import { AdminLeader, AdminNewsPost, ApiError, MemberBroadcast, createAdminLeader, createAdminNews, createMemberBroadcast, deleteAdminLeader, getAdminBroadcasts, getAdminLeaders, getAdminNews, updateAdminLeader, updateAdminNews } from '@/lib/api'
 import { API_BASE } from '@/lib/api-base'
 import { WS_BASE } from '@/lib/api-base'
 import { io } from 'socket.io-client'
@@ -45,6 +45,8 @@ export default function AdminDashboard() {
   const [applicationPositions, setApplicationPositions] = useState<ElectionPosition[]>([])
   const [events, setEvents] = useState<AdminEvent[]>([])
   const [resources, setResources] = useState<AdminResource[]>([])
+  const [leaders, setLeaders] = useState<AdminLeader[]>([])
+  const [broadcasts, setBroadcasts] = useState<MemberBroadcast[]>([])
   const [health, setHealth] = useState<{ ok: boolean; data: any } | null>(null)
   const [eventForm, setEventForm] = useState({ title: '', description: '', location: '', date: '', status: 'UPCOMING' })
   const [resourceForm, setResourceForm] = useState({ title: '', description: '', file: null as File | null, category: 'Reports' })
@@ -55,6 +57,22 @@ export default function AdminDashboard() {
   const [electionStatusMessage, setElectionStatusMessage] = useState('')
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [electionForm, setElectionForm] = useState({ title: '', description: '', startsAt: '', endsAt: '' })
+  const [editingLeaderId, setEditingLeaderId] = useState<string | null>(null)
+  const [leaderForm, setLeaderForm] = useState({
+    name: '',
+    title: '',
+    bio: '',
+    imageUrl: '',
+    contactEmail: '',
+    contactPhone: '',
+    userId: '',
+    sortOrder: 0,
+  })
+  const [broadcastForm, setBroadcastForm] = useState<{ title: string; content: string; type: 'ANNOUNCEMENT' | 'MEMO' }>({
+    title: '',
+    content: '',
+    type: 'ANNOUNCEMENT',
+  })
   const [blogForm, setBlogForm] = useState({
     title: '',
     summary: '',
@@ -88,10 +106,10 @@ export default function AdminDashboard() {
 
     const loadLiveData = async () => {
       try {
-        const [electionResult, applicationResult, eventResult, resourceResult, healthResult, memberResult, activityResult, submissionResult, newsResult] = await Promise.allSettled([
-          getElections(), getAdminApplications(token), getAdminEvents(token), getAdminResources(token), getSystemHealth(), getAdminMembers(token), getSystemActivity(token), getMemberEventSubmissions(token), getAdminNews(token),
+        const [electionResult, applicationResult, eventResult, resourceResult, healthResult, memberResult, activityResult, submissionResult, newsResult, leaderResult, broadcastResult] = await Promise.allSettled([
+          getElections(), getAdminApplications(token), getAdminEvents(token), getAdminResources(token), getSystemHealth(), getAdminMembers(token), getSystemActivity(token), getMemberEventSubmissions(token), getAdminNews(token), getAdminLeaders(), getAdminBroadcasts(),
         ])
-        const failedLoads = [applicationResult, eventResult, resourceResult, memberResult, activityResult, submissionResult, newsResult]
+        const failedLoads = [applicationResult, eventResult, resourceResult, memberResult, activityResult, submissionResult, newsResult, leaderResult, broadcastResult]
           .filter((result) => result.status === 'rejected').length
         if (failedLoads > 0) {
           setAdminMessage({ type: 'error', text: `${failedLoads} admin data source${failedLoads === 1 ? '' : 's'} could not be loaded. Refresh after checking the API.` })
@@ -105,6 +123,8 @@ export default function AdminDashboard() {
         const activityData = activityResult.status === 'fulfilled' ? activityResult.value : []
         const submissionData = submissionResult.status === 'fulfilled' ? submissionResult.value : []
         const newsData = newsResult.status === 'fulfilled' ? newsResult.value : []
+        const leaderData = leaderResult.status === 'fulfilled' ? leaderResult.value : []
+        const broadcastData = broadcastResult.status === 'fulfilled' ? broadcastResult.value : []
         setElections(electionData as ElectionRecord[])
         setLiveApplications(applicationData)
         setEvents(eventData)
@@ -114,6 +134,8 @@ export default function AdminDashboard() {
         setActivity(activityData)
         setMemberSubmissions(submissionData)
         setBlogPosts(newsData)
+        setLeaders(leaderData)
+        setBroadcasts(broadcastData)
         if (electionData[0]) setSelectedElectionId((current) => current || electionData[0].id)
       } catch {
         setHealth({ ok: false, data: null })
@@ -182,6 +204,88 @@ export default function AdminDashboard() {
       setAdminMessage({ type: 'success', text: 'Member role updated.' })
     } catch (error) {
       setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to update member role.' })
+    }
+  }
+
+  const resetLeaderForm = () => {
+    setEditingLeaderId(null)
+    setLeaderForm({ name: '', title: '', bio: '', imageUrl: '', contactEmail: '', contactPhone: '', userId: '', sortOrder: leaders.length })
+  }
+
+  const saveLeader = async () => {
+    if (!leaderForm.name.trim() || !leaderForm.title.trim()) {
+      setAdminMessage({ type: 'error', text: 'Enter the leader name and position.' })
+      return
+    }
+
+    const data = {
+      ...leaderForm,
+      name: leaderForm.name.trim(),
+      title: leaderForm.title.trim(),
+      bio: leaderForm.bio.trim() || null,
+      imageUrl: leaderForm.imageUrl.trim() || null,
+      contactEmail: leaderForm.contactEmail.trim() || null,
+      contactPhone: leaderForm.contactPhone.trim() || null,
+      userId: leaderForm.userId || null,
+    }
+    try {
+      const saved = editingLeaderId
+        ? await updateAdminLeader(editingLeaderId, data)
+        : await createAdminLeader(data)
+      setLeaders((current) => editingLeaderId
+        ? current.map((leader) => leader.id === saved.id ? saved : leader)
+        : [...current, saved].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)))
+      resetLeaderForm()
+      setAdminMessage({ type: 'success', text: editingLeaderId ? 'Leader details and position updated.' : 'Leader added to the directory.' })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to save leader details.' })
+    }
+  }
+
+  const editLeader = (leader: AdminLeader) => {
+    setEditingLeaderId(leader.id)
+    setLeaderForm({
+      name: leader.name,
+      title: leader.title,
+      bio: leader.bio || '',
+      imageUrl: leader.imageUrl || '',
+      contactEmail: leader.contactEmail || '',
+      contactPhone: leader.contactPhone || '',
+      userId: leader.userId || '',
+      sortOrder: leader.sortOrder,
+    })
+  }
+
+  const removeLeader = async (leaderId: string) => {
+    if (!window.confirm('Delete this leader directory record?')) return
+    try {
+      await deleteAdminLeader(leaderId)
+      setLeaders((current) => current.filter((leader) => leader.id !== leaderId))
+      if (editingLeaderId === leaderId) resetLeaderForm()
+      setAdminMessage({ type: 'success', text: 'Leader removed from the directory.' })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to remove leader.' })
+    }
+  }
+
+  const sendMemberBroadcast = async () => {
+    if (!broadcastForm.title.trim() || !broadcastForm.content.trim()) {
+      setAdminMessage({ type: 'error', text: 'Enter a subject and message before sending.' })
+      return
+    }
+    const messageType = broadcastForm.type === 'MEMO' ? 'memo' : 'announcement'
+    if (!window.confirm(`Send this ${messageType} to all ${memberStats.total} members now?`)) return
+    try {
+      const sent = await createMemberBroadcast({
+        title: broadcastForm.title.trim(),
+        content: broadcastForm.content.trim(),
+        type: broadcastForm.type,
+      })
+      setBroadcasts((current) => [sent, ...current])
+      setBroadcastForm((current) => ({ ...current, title: '', content: '' }))
+      setAdminMessage({ type: 'success', text: `${sent.type === 'MEMO' ? 'Memo' : 'Announcement'} sent to all members.` })
+    } catch (error) {
+      setAdminMessage({ type: 'error', text: error instanceof ApiError ? error.message : 'Unable to send the member message.' })
     }
   }
 
@@ -393,6 +497,14 @@ export default function AdminDashboard() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Members
           </a>
+          <a href="#" className={`nav-link ${activeMenu === 'leaders' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('leaders'); setMenuOpen(false); }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>
+            Leaders
+          </a>
+          <a href="#" className={`nav-link ${activeMenu === 'broadcasts' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('broadcasts'); setMenuOpen(false); }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16v12H5.2L2 19V6a2 2 0 0 1 2-2z"/><path d="M8 8h8M8 12h5"/></svg>
+            Memos & Announcements
+          </a>
           <a href="#" className={`nav-link ${activeMenu === 'applications' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveMenu('applications'); setMenuOpen(false); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             Applications
@@ -490,6 +602,76 @@ export default function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {activeMenu === 'leaders' && (
+          <div className="panel-card">
+            <div className="panel-header"><h2>Leadership directory</h2><span>{leaders.length} leaders</span></div>
+            <div className="blog-editor">
+              <h3>{editingLeaderId ? 'Edit leader and position' : 'Add leader'}</h3>
+              <div className="field-row">
+                <label>Name<input value={leaderForm.name} onChange={(e) => setLeaderForm({ ...leaderForm, name: e.target.value })} /></label>
+                <label>Position / role<input value={leaderForm.title} onChange={(e) => setLeaderForm({ ...leaderForm, title: e.target.value })} /></label>
+              </div>
+              <div className="field-row">
+                <label>Contact email<input type="email" value={leaderForm.contactEmail} onChange={(e) => setLeaderForm({ ...leaderForm, contactEmail: e.target.value })} /></label>
+                <label>Contact phone<input type="tel" value={leaderForm.contactPhone} onChange={(e) => setLeaderForm({ ...leaderForm, contactPhone: e.target.value })} /></label>
+              </div>
+              <div className="field-row">
+                <label>Linked member account<select value={leaderForm.userId} onChange={(e) => setLeaderForm({ ...leaderForm, userId: e.target.value })}><option value="">No linked account</option>{members.map((member) => <option key={member.id} value={member.id}>{member.name} · {member.email}</option>)}</select></label>
+                <label>Display order<input type="number" min="0" value={leaderForm.sortOrder} onChange={(e) => setLeaderForm({ ...leaderForm, sortOrder: Number(e.target.value) })} /></label>
+              </div>
+              <div className="field-row"><label>Image URL<input value={leaderForm.imageUrl} onChange={(e) => setLeaderForm({ ...leaderForm, imageUrl: e.target.value })} /></label></div>
+              <div className="field-row"><label>Portfolio description<textarea rows={3} value={leaderForm.bio} onChange={(e) => setLeaderForm({ ...leaderForm, bio: e.target.value })} /></label></div>
+              <div className="application-actions">
+                <button className="publish-btn" onClick={saveLeader}>{editingLeaderId ? 'Save leader' : 'Add leader'}</button>
+                {editingLeaderId && <button className="toggle-btn" onClick={resetLeaderForm}>Cancel edit</button>}
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Leader</th><th>Position</th><th>Contact details</th><th>Linked account</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {leaders.map((leader) => (
+                    <tr key={leader.id}>
+                      <td>{leader.name}<br /><small>{leader.bio || 'No portfolio description'}</small></td>
+                      <td>{leader.title}</td>
+                      <td>{leader.contactEmail || leader.user?.email || 'Email not provided'}<br />{leader.contactPhone || leader.user?.phone || 'Phone not provided'}</td>
+                      <td>{leader.user?.name || 'Not linked'}</td>
+                      <td className="action-cell"><button className="toggle-btn" onClick={() => editLeader(leader)}>Edit</button><button className="danger-btn" onClick={() => removeLeader(leader.id)}>Delete</button></td>
+                    </tr>
+                  ))}
+                  {!leaders.length && <tr><td colSpan={5}>No leader records have been added.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeMenu === 'broadcasts' && (
+          <div className="panel-card">
+            <div className="panel-header"><h2>Memos and announcements</h2><span>Visible to all {memberStats.total} members in their portal</span></div>
+            <div className="blog-editor">
+              <h3>Send a member-wide message</h3>
+              <div className="field-row">
+                <label>Message type<select value={broadcastForm.type} onChange={(e) => setBroadcastForm({ ...broadcastForm, type: e.target.value as 'ANNOUNCEMENT' | 'MEMO' })}><option value="ANNOUNCEMENT">Announcement</option><option value="MEMO">Memo</option></select></label>
+                <label>Subject<input value={broadcastForm.title} onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })} /></label>
+              </div>
+              <div className="field-row"><label>Message<textarea rows={5} value={broadcastForm.content} onChange={(e) => setBroadcastForm({ ...broadcastForm, content: e.target.value })} /></label></div>
+              <button className="publish-btn" onClick={sendMemberBroadcast}>Send to all members</button>
+            </div>
+            <div className="published-posts">
+              <h3>Previously sent</h3>
+              {broadcasts.map((broadcast) => (
+                <article key={broadcast.id} className="post-card">
+                  <div className="post-head"><strong>{broadcast.title}</strong><span>{broadcast.type}</span></div>
+                  <p>{broadcast.content}</p>
+                  <small>Sent by {broadcast.createdBy?.name || 'Admin'} · {new Date(broadcast.publishedAt).toLocaleString()}</small>
+                </article>
+              ))}
+              {!broadcasts.length && <p className="empty-state">No member-wide messages have been sent.</p>}
             </div>
           </div>
         )}

@@ -39,6 +39,8 @@ model User {
   eventParticipations UserEventParticipation[]
   contentReads     UserContentRead[]
   communityServices CommunityService[]
+  leaderProfile    Leader?
+  broadcasts       MemberBroadcast[]
 }
 
 model RefreshToken {
@@ -78,6 +80,39 @@ model SecretariatMember {
   status    String   @default("ACTIVE") // ACTIVE, INACTIVE
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Leader {
+  id            String   @id @default(uuid())
+  name          String
+  title         String
+  bio           String?
+  imageUrl      String?
+  contactEmail  String?
+  contactPhone  String?
+  userId        String?  @unique
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([sortOrder])
+}
+
+model MemberBroadcast {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  type        String   @default("ANNOUNCEMENT") // ANNOUNCEMENT | MEMO
+  createdById String?
+  createdAt   DateTime @default(now())
+  publishedAt DateTime @default(now())
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([publishedAt])
+  @@index([type, publishedAt])
 }
 
 model News {

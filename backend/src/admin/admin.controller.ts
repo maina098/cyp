@@ -9,6 +9,8 @@ import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard, Roles } from '../common/guards/roles.guard';
 import { AdminService } from './admin.service';
+import { CreateLeaderDto, UpdateLeaderDto } from './dto/leader.dto';
+import { CreateBroadcastDto } from './dto/create-broadcast.dto';
 
 const allowedResourceMimes = new Set([
   'image/jpeg',
@@ -206,6 +208,46 @@ export class AdminController {
   @ApiOperation({ summary: 'Update a member role' })
   updateUserRole(@Param('userId') userId: string, @Body() body: { role: string }) {
     return this.adminService.updateUserRole(userId, body.role);
+  }
+
+  @Get('leaders')
+  @ApiOperation({ summary: 'List leaders and their positions and contact details' })
+  getLeaders() {
+    return this.adminService.getLeaders();
+  }
+
+  @Post('leaders')
+  @ApiOperation({ summary: 'Create a leader directory record' })
+  createLeader(@Body() body: CreateLeaderDto, @Request() request: { user: { id: string } }) {
+    return this.adminService.createLeader(body, request.user.id);
+  }
+
+  @Patch('leaders/:leaderId')
+  @ApiOperation({ summary: 'Update a leader directory record' })
+  updateLeader(
+    @Param('leaderId') leaderId: string,
+    @Body() body: UpdateLeaderDto,
+    @Request() request: { user: { id: string } },
+  ) {
+    return this.adminService.updateLeader(leaderId, body, request.user.id);
+  }
+
+  @Delete('leaders/:leaderId')
+  @ApiOperation({ summary: 'Delete a leader directory record' })
+  deleteLeader(@Param('leaderId') leaderId: string, @Request() request: { user: { id: string } }) {
+    return this.adminService.deleteLeader(leaderId, request.user.id);
+  }
+
+  @Get('broadcasts')
+  @ApiOperation({ summary: 'List member-wide announcements and memos' })
+  getBroadcasts() {
+    return this.adminService.getBroadcasts();
+  }
+
+  @Post('broadcasts')
+  @ApiOperation({ summary: 'Send a memo or announcement to all members' })
+  createBroadcast(@Body() body: CreateBroadcastDto, @Request() request: { user: { id: string } }) {
+    return this.adminService.createBroadcast(body, request.user.id);
   }
 
   // Applications Management

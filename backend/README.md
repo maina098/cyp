@@ -127,15 +127,17 @@ The backend exposes the following main route groups:
 | Area | Prefix | Purpose |
 | --- | --- | --- |
 | Authentication | `/auth` | Register, login, refresh, verification, reset, and logout flow |
-| Public content | `/content` | Public platform content |
+| Public content | `/content` | Public platform content, including the database-backed leadership directory |
 | Members | `/users/me` | Profile, dashboard, activity, uploads, participation |
-| Admin | `/admin` | Content, resources, events, applications, positions, activity |
+| Admin | `/admin` | Content, resources, events, applications, positions, members, leaders, broadcasts, activity |
 | Elections | `/elections` | Election CRUD, status, candidates, applications, timeline, results |
 | Applications | `/applications` | Submit, review, and moderate applications |
 | Positions | `/positions` | Read and admin-manage election positions |
 | Votes | `/elections/:id/vote` | OTP verification, voting sessions, vote casting, and election vote data |
 | Health | `/health` | Health and readiness probes |
 | Contact | `/contact` | Contact message submission and access |
+
+All `/admin` routes require an authenticated `ADMIN` account. Admins can update member account roles, manage the database-backed leader directory and contact details, and publish memos or announcements. Member broadcasts are stored in the database and appear in every member's authenticated dashboard; they are not sent as email. The migration re-grants `ADMIN` to `kibwanacyp@gmail.com` and invalidates existing sessions so the account must sign in again.
 
 Important election endpoints include:
 
@@ -159,6 +161,19 @@ POST   /auth/refresh
 POST   /elections/:id/vote/otp/request
 POST   /elections/:id/vote/otp/verify
 POST   /elections/:id/vote/session
+```
+
+Admin directory and member broadcast endpoints:
+
+```text
+GET    /admin/leaders
+POST   /admin/leaders
+PATCH  /admin/leaders/:leaderId
+DELETE /admin/leaders/:leaderId
+GET    /admin/broadcasts
+POST   /admin/broadcasts
+GET    /users/me/dashboard
+GET    /content/leaders
 ```
 
 ## Local Setup

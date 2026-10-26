@@ -56,6 +56,7 @@ export type MemberDashboard = {
   events: Array<{ id: string; title: string; description?: string; mediaUrl?: string; mediaType?: string; status: string; createdAt: string; event: ContentItem }>;
   resources: ContentItem[];
   elections: Election[];
+  broadcasts: MemberBroadcast[];
 };
 
 export class ApiError extends Error {
@@ -657,6 +658,55 @@ export function getAdminMembers(token: string) {
 
 export function updateAdminMemberRole(token: string, userId: string, role: string) {
   return adminJson<{ id: string; email: string; name: string; role: string }>(`/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) });
+}
+
+export type AdminLeader = {
+  id: string;
+  name: string;
+  title: string;
+  bio?: string | null;
+  imageUrl?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  userId?: string | null;
+  sortOrder: number;
+  user?: { id: string; name: string; email: string; phone?: string | null } | null;
+};
+
+export type LeaderInput = Omit<AdminLeader, 'id' | 'user'>;
+
+export function getAdminLeaders() {
+  return adminJson<AdminLeader[]>('/admin/leaders');
+}
+
+export function createAdminLeader(data: LeaderInput) {
+  return adminJson<AdminLeader>('/admin/leaders', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export function updateAdminLeader(leaderId: string, data: LeaderInput) {
+  return adminJson<AdminLeader>(`/admin/leaders/${leaderId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export function deleteAdminLeader(leaderId: string) {
+  return adminJson<{ success: boolean }>(`/admin/leaders/${leaderId}`, { method: 'DELETE' });
+}
+
+export type MemberBroadcast = {
+  id: string;
+  title: string;
+  content: string;
+  type: 'ANNOUNCEMENT' | 'MEMO';
+  createdAt: string;
+  publishedAt: string;
+  createdBy?: { id: string; name: string; email: string } | null;
+};
+
+export function getAdminBroadcasts() {
+  return adminJson<MemberBroadcast[]>('/admin/broadcasts');
+}
+
+export function createMemberBroadcast(data: Pick<MemberBroadcast, 'title' | 'content' | 'type'>) {
+  return adminJson<MemberBroadcast>('/admin/broadcasts', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export type AdminActivity = {

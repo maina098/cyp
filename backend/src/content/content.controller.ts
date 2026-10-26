@@ -34,4 +34,9 @@ export class ContentController {
   getSecretariat() {
     return this.contentService.getSecretariat();
   }
+
+  @Get('leaders')
+  getLeaders() {
+    return this.contentService.getLeaders();
+  }
 }
