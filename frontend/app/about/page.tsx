@@ -56,6 +56,12 @@ const leadershipTeam = [
     imagePos: 'center 5%',
   },
   {
+    name: 'HON. BARKE RASHID',
+    title: 'Cabinet Secretary for Mining, Blue Economy and Maritime Affairs',
+    role: 'The Cabinet Secretary promotes responsible development of mineral resources and sustainable use of coastal and marine assets. The office advances blue-economy and maritime opportunities, supports sector partnerships, and encourages investment and livelihoods while safeguarding the region’s natural resources.',
+    image: '/images/barke-rashid.jpg',
+  },
+  {
     name: 'HON. MKASI HAMISI',
     title: 'Deputy Cabinet Secretary for Finance',
     role: 'The Deputy Cabinet Secretary for Finance supports the Treasury with budget preparation, expenditure tracking, and accurate financial records. The office helps monitor approved spending, prepare timely financial updates, identify funding needs, and strengthen transparent, accountable planning for Parliament programmes.',
