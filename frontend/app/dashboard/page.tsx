@@ -3,10 +3,9 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { changeMemberPassword, ElectionPosition, getElectionPositions, getEvents, getMemberDashboard, getResources, submitApplication, submitEventParticipation, updateMemberProfile, uploadMemberFile, uploadProfilePicture } from '@/lib/api'
+import { API_BASE } from '@/lib/api-base'
 import LiveElection from '@/app/elections/live-election'
 import './dashboard.css'
-
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://cyp-1jps.onrender.com').replace(/\/$/, '')
 
 type Member = { id?: string; email: string; name: string; role?: string; county?: string | null; phone?: string | null; profileImageUrl?: string | null; constituency?: string | null; bio?: string | null }
 type Item = { id?: string; title: string; summary?: string; content?: string; description?: string; publishedAt?: string; startsAt?: string; endsAt?: string; date?: string; location?: string; fileUrl?: string; participationStatus?: string; mediaUrl?: string | null }

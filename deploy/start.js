@@ -19,7 +19,10 @@ const services = isLocal
         command: process.execPath,
         args: ['node_modules/next/dist/bin/next', 'dev', '--hostname', '127.0.0.1', '--port', frontendPort],
         cwd: join(repositoryRoot, 'frontend'),
-        env: { NEXT_PUBLIC_API_URL: `http://localhost:${apiPort}` },
+        env: {
+          NEXT_PUBLIC_API_URL: `http://localhost:${apiPort}`,
+          API_INTERNAL_URL: `http://127.0.0.1:${apiPort}`,
+        },
       },
     ]
   : [
@@ -35,7 +38,7 @@ const services = isLocal
         command: 'node',
         args: ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3000'],
         cwd: '/app/frontend',
-        env: {},
+        env: { API_INTERNAL_URL: 'http://127.0.0.1:3001' },
       },
       {
         name: 'nginx',

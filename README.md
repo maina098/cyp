@@ -14,6 +14,8 @@ The root `Dockerfile` runs the Next.js frontend and NestJS API in one Render web
 
 The Render service listens on port `10000`; leave the service `PORT` at Render's default. The blueprint provisions a persistent disk for `/app/backend/uploads` so uploaded files survive deploys. A persistent disk requires a paid Render web-service plan.
 
+If the public URL shows an API response instead of the website, check that the Render service was created from this Blueprint with the **Docker** runtime, an empty Root Directory (repository root), and `./Dockerfile` as its Dockerfile path. Render does not convert an existing Node service to Docker; create the Blueprint service instead. Open the service root URL for the website; `/api/health` is only the backend health endpoint.
+
 The backend's local `backend/.env` already supplies the existing database connection, and the Prisma schema uses PostgreSQL. The existing database was checked during setup: all six Prisma migrations are applied. Render does not provision a database in this blueprint; its `DATABASE_URL` must point to that same existing PostgreSQL database.
 
 ## Run locally

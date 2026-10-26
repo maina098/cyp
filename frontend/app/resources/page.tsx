@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { SiteShell } from '@/components/site-shell';
 import { getResources } from '@/lib/api';
+import { API_BASE } from '@/lib/api-base';
 
 export const metadata: Metadata = {
   title: 'Resources',
@@ -26,7 +27,7 @@ export default async function ResourcesPage() {
         <article className="panel-box">
           <h3>Resources library</h3>
           <p>Access strategic documents and blueprints for coastal development.</p>
-          {items.length ? items.map((resource) => <div key={resource.id} className="resource-list-item"><h4>{resource.title}</h4><p>{resource.description || resource.summary}</p>{resource.fileUrl && <a className="text-link" href={resource.fileUrl.startsWith('http') ? resource.fileUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${resource.fileUrl}`} target="_blank" rel="noreferrer">Open resource</a>}</div>) : <p>No resources have been published yet.</p>}
+          {items.length ? items.map((resource) => <div key={resource.id} className="resource-list-item"><h4>{resource.title}</h4><p>{resource.description || resource.summary}</p>{resource.fileUrl && <a className="text-link" href={resource.fileUrl.startsWith('http') ? resource.fileUrl : `${API_BASE}${resource.fileUrl}`} target="_blank" rel="noreferrer">Open resource</a>}</div>) : <p>No resources have been published yet.</p>}
         </article>
       </section>
     </SiteShell>

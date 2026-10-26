@@ -217,7 +217,11 @@ export function submitEventParticipation(token: string, eventId: string, data: {
 
 async function fetchJson<T>(path: string): Promise<T | null> {
   try {
-    const response = await fetch(`${API_BASE}${path}`, { cache: 'no-store' });
+    const apiBase =
+      typeof window === 'undefined' && API_BASE.startsWith('/')
+        ? process.env.API_INTERNAL_URL || 'http://127.0.0.1:3001'
+        : API_BASE;
+    const response = await fetch(`${apiBase}${path}`, { cache: 'no-store' });
     if (!response.ok) {
       return null;
     }
