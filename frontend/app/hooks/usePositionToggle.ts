@@ -13,16 +13,12 @@ export function usePositionToggle() {
     try {
       setLoading(true);
       setError(null);
-      const token = 'cookie-session';
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
 
       let result;
       if (shouldOpen) {
-        result = await openApplications(token, electionId, positionId);
+        result = await openApplications(electionId, positionId);
       } else {
-        result = await closeApplications(token, electionId, positionId);
+        result = await closeApplications(electionId, positionId);
       }
 
       if (!result.success) {

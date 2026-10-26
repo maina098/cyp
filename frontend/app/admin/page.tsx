@@ -313,8 +313,8 @@ export default function AdminDashboard() {
     if (!token || !selectedElectionId) return
     try {
       const result = position.isOpen
-        ? await closeApplications(token, selectedElectionId, position.id)
-        : await openApplications(token, selectedElectionId, position.id)
+        ? await closeApplications(selectedElectionId, position.id)
+        : await openApplications(selectedElectionId, position.id)
       if (!result.success) throw new Error(result.error || 'Unable to update application access.')
       setApplicationPositions((current) => current.map((item) => item.id === position.id ? { ...item, isOpen: !position.isOpen } : item))
       const [applications, elections] = await Promise.all([getAdminApplications(token), getElections()])

@@ -542,50 +542,38 @@ export async function updateApplicationStatus(
 }
 
 export async function openApplications(
-  token: string,
   electionId: string,
   positionId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${API_BASE}/admin/positions/${positionId}/open`, {
+    const response = await authenticatedFetch(`/admin/positions/${positionId}/open`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
       body: JSON.stringify({ electionId }),
     });
     if (!response.ok) {
-      const error = await response.json();
-      return { success: false, error: error.message || 'Failed to open applications' };
+      return { success: false, error: await responseMessage(response) };
     }
     return { success: true };
-  } catch (e) {
-    return { success: false, error: 'Network error' };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Network error' };
   }
 }
 
 export async function closeApplications(
-  token: string,
   electionId: string,
   positionId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${API_BASE}/admin/positions/${positionId}/close`, {
+    const response = await authenticatedFetch(`/admin/positions/${positionId}/close`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
       body: JSON.stringify({ electionId }),
     });
     if (!response.ok) {
-      const error = await response.json();
-      return { success: false, error: error.message || 'Failed to close applications' };
+      return { success: false, error: await responseMessage(response) };
     }
     return { success: true };
-  } catch (e) {
-    return { success: false, error: 'Network error' };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Network error' };
   }
 }
 
