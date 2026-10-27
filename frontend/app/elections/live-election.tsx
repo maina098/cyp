@@ -183,10 +183,10 @@ export default function LiveElection({ election }: { election: ElectionDetails }
 
     try {
       await verifyVotingOtp(election.id, otpId, otpCode.trim());
-      await createVotingSession(election.id, otpId);
+      const session = await createVotingSession(election.id, otpId);
 
-      for (const candidateId of Object.values(selectedCandidates)) {
-        await castElectionVote(election.id, candidateId);
+      for (const [positionId, candidateId] of Object.entries(selectedCandidates)) {
+        await castElectionVote(election.id, candidateId, positionId, session.sessionId);
       }
 
       setHasVoted(true);

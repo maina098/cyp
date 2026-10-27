@@ -74,6 +74,13 @@ describe('VotesService', () => {
       mockPrismaService.$transaction.mockImplementation(async (fn) => {
         const mockTx = {
           election: { findUnique: jest.fn().mockResolvedValue(mockElection) },
+          votingSession: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'session-123',
+              expiresAt: new Date(Date.now() + 60_000),
+            }),
+          },
+          electionPosition: { findFirst: jest.fn().mockResolvedValue({ id: 'position-456' }) },
           candidate: { findUnique: jest.fn().mockResolvedValue(mockCandidate) },
           vote: { create: jest.fn().mockResolvedValue({ id: 'vote-123' }) },
           electionResult: { upsert: jest.fn().mockResolvedValue({}) },
@@ -85,7 +92,7 @@ describe('VotesService', () => {
 
       const result = await service.castVote(
         'election-123',
-        { candidateId: 'candidate-123', positionId: 'position-456' },
+        { candidateId: 'candidate-123', positionId: 'position-456', sessionId: 'session-123' },
         'user-123',
       );
 
@@ -96,6 +103,7 @@ describe('VotesService', () => {
       mockPrismaService.$transaction.mockImplementation(async (fn) => {
         const mockTx = {
           election: { findUnique: jest.fn().mockResolvedValue(null) },
+          electionPosition: { findFirst: jest.fn() },
           candidate: { findUnique: jest.fn() },
           vote: { create: jest.fn() },
           electionResult: { upsert: jest.fn() },
@@ -105,7 +113,7 @@ describe('VotesService', () => {
       });
 
       await expect(
-        service.castVote('nonexistent', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
+        service.castVote('nonexistent', { candidateId: 'candidate-123', positionId: 'position-456', sessionId: 'session-123' }, 'user-123'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -114,6 +122,7 @@ describe('VotesService', () => {
       mockPrismaService.$transaction.mockImplementation(async (fn) => {
         const mockTx = {
           election: { findUnique: jest.fn().mockResolvedValue(inactiveElection) },
+          electionPosition: { findFirst: jest.fn() },
           candidate: { findUnique: jest.fn() },
           vote: { create: jest.fn() },
           electionResult: { upsert: jest.fn() },
@@ -123,8 +132,31 @@ describe('VotesService', () => {
       });
 
       await expect(
-        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
+        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456', sessionId: 'session-123' }, 'user-123'),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should reject a vote without a valid voting session', async () => {
+      mockPrismaService.$transaction.mockImplementation(async (fn) => {
+        const mockTx = {
+          election: { findUnique: jest.fn().mockResolvedValue(mockElection) },
+          votingSession: { findFirst: jest.fn().mockResolvedValue(null) },
+          electionPosition: { findFirst: jest.fn() },
+          candidate: { findFirst: jest.fn() },
+          vote: { create: jest.fn() },
+          electionResult: { upsert: jest.fn() },
+          userActivity: { create: jest.fn() },
+        };
+        return fn(mockTx);
+      });
+
+      await expect(
+        service.castVote(
+          'election-123',
+          { candidateId: 'candidate-123', positionId: 'position-456', sessionId: 'invalid-session' },
+          'user-123',
+        ),
+      ).rejects.toThrow('Voting session is invalid or already completed');
     });
 
     it('should throw ConflictException for duplicate vote (P2002 error)', async () => {
@@ -132,7 +164,7 @@ describe('VotesService', () => {
       mockPrismaService.$transaction.mockRejectedValue(prismaError);
 
       await expect(
-        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
+        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456', sessionId: 'session-123' }, 'user-123'),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -140,6 +172,13 @@ describe('VotesService', () => {
       mockPrismaService.$transaction.mockImplementation(async (fn) => {
         const mockTx = {
           election: { findUnique: jest.fn().mockResolvedValue(mockElection) },
+          votingSession: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'session-123',
+              expiresAt: new Date(Date.now() + 60_000),
+            }),
+          },
+          electionPosition: { findFirst: jest.fn().mockResolvedValue({ id: 'position-456' }) },
           candidate: { findUnique: jest.fn().mockResolvedValue(null) },
           vote: { create: jest.fn() },
           electionResult: { upsert: jest.fn() },
@@ -149,7 +188,7 @@ describe('VotesService', () => {
       });
 
       await expect(
-        service.castVote('election-123', { candidateId: 'nonexistent', positionId: 'position-456' }, 'user-123'),
+        service.castVote('election-123', { candidateId: 'nonexistent', positionId: 'position-456', sessionId: 'session-123' }, 'user-123'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -158,6 +197,13 @@ describe('VotesService', () => {
       mockPrismaService.$transaction.mockImplementation(async (fn) => {
         const mockTx = {
           election: { findUnique: jest.fn().mockResolvedValue(mockElection) },
+          votingSession: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'session-123',
+              expiresAt: new Date(Date.now() + 60_000),
+            }),
+          },
+          electionPosition: { findFirst: jest.fn().mockResolvedValue({ id: 'position-456' }) },
           candidate: { findUnique: jest.fn().mockResolvedValue(wrongElectionCandidate) },
           vote: { create: jest.fn() },
           electionResult: { upsert: jest.fn() },
@@ -167,7 +213,7 @@ describe('VotesService', () => {
       });
 
       await expect(
-        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
+        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456', sessionId: 'session-123' }, 'user-123'),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -175,6 +221,13 @@ describe('VotesService', () => {
       mockPrismaService.$transaction.mockImplementation(async (fn) => {
         const mockTx = {
           election: { findUnique: jest.fn().mockResolvedValue(mockElection) },
+          votingSession: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'session-123',
+              expiresAt: new Date(Date.now() + 60_000),
+            }),
+          },
+          electionPosition: { findFirst: jest.fn().mockResolvedValue({ id: 'position-456' }) },
           candidate: { findFirst: jest.fn().mockResolvedValue(null) },
           vote: { create: jest.fn() },
           electionResult: { upsert: jest.fn() },
@@ -184,8 +237,36 @@ describe('VotesService', () => {
       });
 
       await expect(
-        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456' }, 'user-123'),
+        service.castVote('election-123', { candidateId: 'candidate-123', positionId: 'position-456', sessionId: 'session-123' }, 'user-123'),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject a vote for a position from another election', async () => {
+      mockPrismaService.$transaction.mockImplementation(async (fn) => {
+        const mockTx = {
+          election: { findUnique: jest.fn().mockResolvedValue(mockElection) },
+          votingSession: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'session-123',
+              expiresAt: new Date(Date.now() + 60_000),
+            }),
+          },
+          electionPosition: { findFirst: jest.fn().mockResolvedValue(null) },
+          candidate: { findFirst: jest.fn() },
+          vote: { create: jest.fn() },
+          electionResult: { upsert: jest.fn() },
+          userActivity: { create: jest.fn() },
+        };
+        return fn(mockTx);
+      });
+
+      await expect(
+        service.castVote(
+          'election-123',
+          { candidateId: 'candidate-123', positionId: 'position-from-another-election', sessionId: 'session-123' },
+          'user-123',
+        ),
+      ).rejects.toThrow('Position does not belong to this election');
     });
   });
 

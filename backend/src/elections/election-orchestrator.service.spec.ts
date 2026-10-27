@@ -1,6 +1,34 @@
 import { ElectionOrchestratorService } from './election-orchestrator.service';
 
 describe('ElectionOrchestratorService', () => {
+  it('rejects candidates assigned to a position from another election', async () => {
+    const prisma = {
+      election: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'election-1',
+          createdBy: 'owner-1',
+          status: 'draft',
+        }),
+      },
+      electionPosition: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      candidate: {
+        create: jest.fn(),
+      },
+    } as any;
+    const service = new ElectionOrchestratorService(prisma, {} as any);
+
+    await expect(
+      service.addCandidate(
+        'election-1',
+        { name: 'Candidate', positionId: 'position-from-another-election' },
+        'owner-1',
+      ),
+    ).rejects.toThrow('Position does not belong to this election');
+    expect(prisma.candidate.create).not.toHaveBeenCalled();
+  });
+
   it('creates missing default positions when initializing an election', async () => {
     const createdPositions: any[] = [];
     const prisma = {
@@ -48,6 +76,60 @@ describe('ElectionOrchestratorService', () => {
 
     expect(gateway.broadcastStatusChange).toHaveBeenCalledWith(updated);
     expect(prisma.$transaction.mock.calls[0][0]).toBeDefined();
+  });
+
+  it('closes positions and snapshots winners and ties when an election closes', async () => {
+    const election = {
+      id: 'election-1',
+      createdBy: 'owner-1',
+      status: 'active',
+      positions: [],
+      applications: [],
+    };
+    const updated = { ...election, status: 'closed' };
+    const positionResultUpsert = jest.fn().mockResolvedValue({});
+    const prisma = {
+      election: { findUnique: jest.fn().mockResolvedValue(election) },
+      $transaction: jest.fn().mockImplementation(async (callback) => callback({
+        electionPosition: {
+          updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+          findMany: jest.fn().mockResolvedValue([
+            { id: 'position-winner' },
+            { id: 'position-tie' },
+          ]),
+        },
+        vote: {
+          groupBy: jest.fn(async ({ where }: any) => where.positionId === 'position-winner'
+            ? [
+                { candidateId: 'candidate-winner', _count: { _all: 3 } },
+                { candidateId: 'candidate-second', _count: { _all: 1 } },
+              ]
+            : [
+                { candidateId: 'candidate-tie-a', _count: { _all: 2 } },
+                { candidateId: 'candidate-tie-b', _count: { _all: 2 } },
+              ]),
+        },
+        positionResult: { upsert: positionResultUpsert },
+        election: { update: jest.fn().mockResolvedValue(updated) },
+      })),
+    } as any;
+    const gateway = { broadcastStatusChange: jest.fn() } as any;
+    const service = new ElectionOrchestratorService(prisma, gateway);
+
+    await service.transitionElectionStatus('election-1', 'closed', 'owner-1');
+
+    expect(positionResultUpsert).toHaveBeenCalledTimes(2);
+    expect(positionResultUpsert.mock.calls[0][0].create).toMatchObject({
+      candidateId: 'candidate-winner',
+      totalVotes: 4,
+      isTie: false,
+    });
+    expect(positionResultUpsert.mock.calls[1][0].create).toMatchObject({
+      candidateId: null,
+      totalVotes: 4,
+      isTie: true,
+    });
+    expect(gateway.broadcastStatusChange).toHaveBeenCalledWith(updated);
   });
 
   it('requires the election to be active before opening positions for applications', async () => {

@@ -7,4 +7,8 @@ export class CastVoteDto {
   @IsNotEmpty()
   @IsUUID()
   positionId: string;
+
+  @IsNotEmpty()
+  @IsUUID()
+  sessionId: string;
 }

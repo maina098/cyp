@@ -170,10 +170,15 @@ export async function createVotingSession(electionId: string, otpId: string) {
   return response.json() as Promise<{ sessionId: string; expiresAt: string; message: string }>;
 }
 
-export async function castElectionVote(electionId: string, candidateId: string) {
+export async function castElectionVote(
+  electionId: string,
+  candidateId: string,
+  positionId: string,
+  sessionId: string,
+) {
   const response = await authenticatedFetch(`/elections/${electionId}/vote`, {
     method: 'POST',
-    body: JSON.stringify({ candidateId }),
+    body: JSON.stringify({ candidateId, positionId, sessionId }),
   });
   if (!response.ok) throw new ApiError(response.status, await responseMessage(response));
   return response.json();

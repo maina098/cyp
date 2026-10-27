@@ -403,32 +403,14 @@ export class ElectionsService {
     return this.prisma.election.findMany({ where: { id: { in: due.map((election) => election.id) } } });
   }
 
-  async closeExpiredElections(now: Date) {
-    const expired = await this.prisma.election.findMany({
+  async findExpiredElections(now: Date) {
+    return this.prisma.election.findMany({
       where: {
         status: 'active',
         endsAt: { lte: now },
       },
+      select: { id: true, createdBy: true },
     });
-
-    if (expired.length > 0) {
-      await this.prisma.election.updateMany({
-        where: {
-          status: 'active',
-          endsAt: { lte: now },
-        },
-        data: { status: 'closed' },
-      });
-      await this.prisma.electionPosition.updateMany({
-        where: { electionId: { in: expired.map((election) => election.id) } },
-        data: { isOpen: false },
-      });
-    }
-
-    return expired.map((election) => ({
-      id: election.id,
-      status: 'closed',
-    }));
   }
 
 }

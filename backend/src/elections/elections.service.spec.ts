@@ -3,8 +3,15 @@ import { ElectionsService } from './elections.service';
 describe('ElectionsService', () => {
   it('creates an election with five closed default positions', async () => {
     const created = { id: 'election-1', positions: [] };
+    const createElection = jest.fn().mockResolvedValue(created);
     const prisma = {
-      election: { create: jest.fn().mockResolvedValue(created) },
+      $transaction: jest.fn(async (callback) => callback({
+        election: {
+          create: createElection,
+          findUniqueOrThrow: jest.fn().mockResolvedValue(created),
+        },
+        candidate: { create: jest.fn() },
+      })),
     } as any;
     const service = new ElectionsService(prisma);
 
@@ -16,7 +23,7 @@ describe('ElectionsService', () => {
     }, 'admin-1');
 
     expect(result).toEqual(created);
-    const createData = prisma.election.create.mock.calls[0][0].data;
+    const createData = createElection.mock.calls[0][0].data;
     expect(createData.positions.create).toHaveLength(5);
     expect(createData.positions.create.every((position: any) => position.isOpen === false)).toBe(true);
   });

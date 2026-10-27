@@ -161,6 +161,27 @@ POST   /auth/refresh
 POST   /elections/:id/vote/otp/request
 POST   /elections/:id/vote/otp/verify
 POST   /elections/:id/vote/session
+POST   /elections/:id/vote
+```
+
+Vote casting is limited to five requests per minute in addition to the global API rate limit. Database uniqueness enforces one vote per member per election position; voting sessions, positions, and candidates are checked against the voter and election before a vote is recorded.
+
+### Election lifecycle, voting, live updates, and results
+
+1. **Create and schedule:** an admin creates an election with future start/end dates. Creation adds five default CYP positions, initially closed for applications. Elections move through `draft`, `scheduled`, `active`, and `closed` via the transition-status workflow. A scheduler checks for start/end times every minute.
+2. **Applications and candidates:** applications are accepted only for an open position in a scheduled or active election. Admins can open positions once the election is active. Each application starts as `pending`; admin approval creates a candidate tied to that election and position. Cross-election position references are rejected.
+3. **Authenticate the ballot:** the signed-in member selects a candidate for each position, requests an email OTP, verifies it, and creates a voting session. The OTP is single-use; the resulting session is bound to the member and election and expires after 10 minutes.
+4. **Cast votes:** the client submits `candidateId`, `positionId`, and `sessionId` for each selected position. Each request requires an authenticated member, an active election within its voting window, a valid session, and a candidate/position belonging to the election. Each vote and its aggregate count are committed in one database transaction. A database unique constraint allows one vote per member per position per election; duplicate attempts return a conflict. The vote endpoint is limited to five requests per minute.
+5. **Stream and retrieve results:** after each committed vote, the server emits `resultsUpdate` to Socket.IO namespace `/results`, room `election:<electionId>`. Clients subscribe with `subscribeElection`. `GET /elections/:id/results` provides the current aggregate snapshot; the public election UI also polls every 15 seconds as a fallback.
+6. **Close and finalize:** closing through the orchestrator closes all positions and stores per-position winner/tie snapshots. Scheduled expiry now uses that same transition so automatic closure also finalizes results. Results include candidate vote counts and percentages.
+
+The realtime transport currently used by CYP is Socket.IO, alongside REST polling. The separate third-party API-key, SSE, and webhook transports described in older planning notes are not implemented.
+
+For the detailed test record and verified scope, see [ELECTION-FLOW-TEST-REPORT.md](./ELECTION-FLOW-TEST-REPORT.md). Run the backend suite with:
+
+```bash
+cd backend
+npm test -- --runInBand
 ```
 
 Admin directory and member broadcast endpoints:
