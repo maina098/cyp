@@ -109,10 +109,41 @@ export default function AdminDashboard() {
         const [electionResult, applicationResult, eventResult, resourceResult, healthResult, memberResult, activityResult, submissionResult, newsResult, leaderResult, broadcastResult] = await Promise.allSettled([
           getElections(), getAdminApplications(token), getAdminEvents(token), getAdminResources(token), getSystemHealth(), getAdminMembers(token), getSystemActivity(token), getMemberEventSubmissions(token), getAdminNews(token), getAdminLeaders(), getAdminBroadcasts(),
         ])
-        const failedLoads = [applicationResult, eventResult, resourceResult, memberResult, activityResult, submissionResult, newsResult, leaderResult, broadcastResult]
-          .filter((result) => result.status === 'rejected').length
-        if (failedLoads > 0) {
-          setAdminMessage({ type: 'error', text: `${failedLoads} admin data source${failedLoads === 1 ? '' : 's'} could not be loaded. Refresh after checking the API.` })
+        const adminSources = [
+          ['Applications', applicationResult],
+          ['Events', eventResult],
+          ['Resources', resourceResult],
+          ['Members', memberResult],
+          ['Activity', activityResult],
+          ['Member submissions', submissionResult],
+          ['News', newsResult],
+          ['Leaders', leaderResult],
+          ['Announcements', broadcastResult],
+        ] as const
+        const failedSources = adminSources.filter(([, result]) => result.status === 'rejected')
+        if (failedSources.length > 0) {
+          const errors = failedSources.map(([name, result]) => {
+            if (result.status !== 'rejected') return name
+            const reason: unknown = result.reason
+            const detail = reason instanceof ApiError
+              ? `HTTP ${reason.status}`
+              : reason instanceof Error
+                ? 'network/CORS error'
+                : 'unknown error'
+            return `${name} (${detail})`
+          })
+          const failureStatuses = failedSources.flatMap(([, result]) =>
+            result.status === 'rejected' && result.reason instanceof ApiError ? [result.reason.status] : [],
+          )
+          const guidance = failureStatuses.includes(403)
+            ? ' Confirm this account has the ADMIN role in the backend database.'
+            : failureStatuses.includes(401)
+              ? ' Sign out and sign in again to refresh the admin session.'
+              : ' Check the API URL, CORS allowlist, and backend availability.'
+          setAdminMessage({
+            type: 'error',
+            text: `Could not load ${errors.join(', ')}.${guidance}`,
+          })
         }
         const electionData = electionResult.status === 'fulfilled' ? electionResult.value : []
         const applicationData = applicationResult.status === 'fulfilled' ? applicationResult.value : []
