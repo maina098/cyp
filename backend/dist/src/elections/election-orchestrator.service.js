@@ -41,6 +41,13 @@ let ElectionOrchestratorService = class ElectionOrchestratorService {
             throw new common_1.BadRequestException('Cannot add candidates to a closed election');
         if (!data.positionId)
             throw new common_1.BadRequestException('Candidate position is required');
+        const position = await this.prisma.electionPosition.findFirst({
+            where: { id: data.positionId, electionId },
+            select: { id: true },
+        });
+        if (!position) {
+            throw new common_1.BadRequestException('Position does not belong to this election');
+        }
         return this.prisma.candidate.create({
             data: {
                 electionId,

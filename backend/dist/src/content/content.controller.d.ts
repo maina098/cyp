@@ -68,4 +68,12 @@ export declare class ContentController {
         imageUrl: string | null;
         status: string;
     }[]>;
+    getLeaders(): Promise<{
+        id: string;
+        name: string;
+        bio: string | null;
+        imageUrl: string | null;
+        title: string;
+        sortOrder: number;
+    }[]>;
 }

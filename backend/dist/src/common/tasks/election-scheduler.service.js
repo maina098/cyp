@@ -13,12 +13,15 @@ exports.ElectionSchedulerService = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_1 = require("@nestjs/schedule");
 const elections_service_1 = require("../../elections/elections.service");
+const election_orchestrator_service_1 = require("../../elections/election-orchestrator.service");
 const results_gateway_1 = require("../../results/results.gateway");
 let ElectionSchedulerService = class ElectionSchedulerService {
     electionsService;
+    electionOrchestrator;
     resultsGateway;
-    constructor(electionsService, resultsGateway) {
+    constructor(electionsService, electionOrchestrator, resultsGateway) {
         this.electionsService = electionsService;
+        this.electionOrchestrator = electionOrchestrator;
         this.resultsGateway = resultsGateway;
     }
     async syncElectionStatuses() {
@@ -27,9 +30,9 @@ let ElectionSchedulerService = class ElectionSchedulerService {
         for (const election of activatedElections) {
             this.resultsGateway.broadcastStatusChange(election);
         }
-        const closedElections = await this.electionsService.closeExpiredElections(now);
+        const closedElections = await this.electionsService.findExpiredElections(now);
         for (const election of closedElections) {
-            this.resultsGateway.broadcastStatusChange(election);
+            await this.electionOrchestrator.transitionElectionStatus(election.id, 'closed', election.createdBy);
         }
     }
 };
@@ -43,6 +46,7 @@ __decorate([
 exports.ElectionSchedulerService = ElectionSchedulerService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [elections_service_1.ElectionsService,
+        election_orchestrator_service_1.ElectionOrchestratorService,
         results_gateway_1.ResultsGateway])
 ], ElectionSchedulerService);
 //# sourceMappingURL=election-scheduler.service.js.map

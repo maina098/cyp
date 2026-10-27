@@ -217,8 +217,8 @@ export declare class ElectionsService {
         endsAt: Date;
         createdBy: string;
     }[]>;
-    closeExpiredElections(now: Date): Promise<{
+    findExpiredElections(now: Date): Promise<{
         id: string;
-        status: string;
+        createdBy: string;
     }[]>;
 }

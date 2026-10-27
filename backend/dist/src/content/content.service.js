@@ -73,6 +73,19 @@ let ContentService = class ContentService {
             orderBy: { name: 'asc' },
         });
     }
+    async getLeaders() {
+        return this.prisma.leader.findMany({
+            select: {
+                id: true,
+                name: true,
+                title: true,
+                bio: true,
+                imageUrl: true,
+                sortOrder: true,
+            },
+            orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        });
+    }
 };
 exports.ContentService = ContentService;
 exports.ContentService = ContentService = __decorate([

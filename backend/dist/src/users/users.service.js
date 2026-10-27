@@ -93,7 +93,7 @@ let UsersService = class UsersService {
         return { message: 'Password changed successfully' };
     }
     async getDashboard(userId) {
-        const [user, eventsAttended, publishedContentRead, publishedContentTotal, communityServices, recentActivity, events, resources, elections] = await Promise.all([
+        const [user, eventsAttended, publishedContentRead, publishedContentTotal, communityServices, recentActivity, events, resources, elections, broadcasts] = await Promise.all([
             this.getProfile(userId),
             this.prisma.userEventParticipation.count({ where: { userId, status: { in: ['ATTENDED', 'APPROVED'] } } }),
             this.prisma.userContentRead.count({
@@ -111,6 +111,12 @@ let UsersService = class UsersService {
             this.prisma.userEventParticipation.findMany({ where: { userId }, include: { event: true }, orderBy: { createdAt: 'desc' } }),
             this.prisma.resource.findMany({ orderBy: { createdAt: 'desc' } }),
             this.getElectionOverview(userId),
+            this.prisma.memberBroadcast.findMany({
+                where: { publishedAt: { lte: new Date() } },
+                include: { createdBy: { select: { name: true } } },
+                orderBy: { publishedAt: 'desc' },
+                take: 50,
+            }),
         ]);
         const communityScore = communityServices.reduce((score, item) => {
             if (item.status === 'APPROVED')
@@ -133,6 +139,7 @@ let UsersService = class UsersService {
             events,
             resources,
             elections,
+            broadcasts,
         };
     }
     getActivities(userId) {

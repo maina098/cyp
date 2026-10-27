@@ -35,6 +35,9 @@ let ContentController = class ContentController {
     getSecretariat() {
         return this.contentService.getSecretariat();
     }
+    getLeaders() {
+        return this.contentService.getLeaders();
+    }
 };
 exports.ContentController = ContentController;
 __decorate([
@@ -73,6 +76,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], ContentController.prototype, "getSecretariat", null);
+__decorate([
+    (0, common_1.Get)('leaders'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], ContentController.prototype, "getLeaders", null);
 exports.ContentController = ContentController = __decorate([
     (0, common_1.Controller)('content'),
     __metadata("design:paramtypes", [content_service_1.ContentService])

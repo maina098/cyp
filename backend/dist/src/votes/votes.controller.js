@@ -19,10 +19,8 @@ const cast_vote_dto_1 = require("./dto/cast-vote.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const results_gateway_1 = require("../results/results.gateway");
-class VerifyOtpDto {
-    otpId;
-    otpCode;
-}
+const throttler_1 = require("@nestjs/throttler");
+const voting_session_dto_1 = require("./dto/voting-session.dto");
 let VotesController = class VotesController {
     votesService;
     resultsGateway;
@@ -53,6 +51,7 @@ exports.VotesController = VotesController;
 __decorate([
     (0, common_1.Post)('elections/:id/vote'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, throttler_1.Throttle)({ default: { limit: 5, ttl: 60_000 } }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -72,6 +71,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('elections/:id/vote/otp/request'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, throttler_1.Throttle)({ default: { limit: 5, ttl: 60_000 } }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -81,11 +81,12 @@ __decorate([
 __decorate([
     (0, common_1.Post)('elections/:id/vote/otp/verify'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, throttler_1.Throttle)({ default: { limit: 5, ttl: 60_000 } }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, VerifyOtpDto, Object]),
+    __metadata("design:paramtypes", [String, voting_session_dto_1.VerifyVotingOtpDto, Object]),
     __metadata("design:returntype", void 0)
 ], VotesController.prototype, "verifyVotingOtp", null);
 __decorate([
@@ -95,7 +96,7 @@ __decorate([
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:paramtypes", [String, voting_session_dto_1.CreateVotingSessionDto, Object]),
     __metadata("design:returntype", void 0)
 ], VotesController.prototype, "createVotingSession", null);
 __decorate([

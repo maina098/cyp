@@ -21,7 +21,7 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: COOKIE_SAME_SITE
-        value: lax
+        value: none
       # Comma-separated browser origins allowed to call the API.
       - key: FRONTEND_URL
         value: https://coastalyouthparliament.co.ke,https://www.coastalyouthparliament.co.ke,https://backend.coastalyouthparliament.co.ke

@@ -14,6 +14,7 @@ const class_validator_1 = require("class-validator");
 class CastVoteDto {
     candidateId;
     positionId;
+    sessionId;
 }
 exports.CastVoteDto = CastVoteDto;
 __decorate([
@@ -25,4 +26,9 @@ __decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], CastVoteDto.prototype, "positionId", void 0);
+__decorate([
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CastVoteDto.prototype, "sessionId", void 0);
 //# sourceMappingURL=cast-vote.dto.js.map

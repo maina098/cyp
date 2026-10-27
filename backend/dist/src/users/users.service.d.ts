@@ -174,6 +174,19 @@ export declare class UsersService {
             endsAt: Date;
             createdBy: string;
         })[];
+        broadcasts: ({
+            createdBy: {
+                name: string;
+            } | null;
+        } & {
+            id: string;
+            createdAt: Date;
+            title: string;
+            content: string;
+            publishedAt: Date;
+            type: string;
+            createdById: string | null;
+        })[];
     }>;
     getActivities(userId: string): import("@prisma/client").Prisma.PrismaPromise<{
         id: string;

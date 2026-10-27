@@ -24,6 +24,8 @@ const throttler_1 = require("@nestjs/throttler");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const admin_service_1 = require("./admin.service");
+const leader_dto_1 = require("./dto/leader.dto");
+const create_broadcast_dto_1 = require("./dto/create-broadcast.dto");
 const allowedResourceMimes = new Set([
     'image/jpeg',
     'image/png',
@@ -135,6 +137,24 @@ let AdminController = class AdminController {
     }
     updateUserRole(userId, body) {
         return this.adminService.updateUserRole(userId, body.role);
+    }
+    getLeaders() {
+        return this.adminService.getLeaders();
+    }
+    createLeader(body, request) {
+        return this.adminService.createLeader(body, request.user.id);
+    }
+    updateLeader(leaderId, body, request) {
+        return this.adminService.updateLeader(leaderId, body, request.user.id);
+    }
+    deleteLeader(leaderId, request) {
+        return this.adminService.deleteLeader(leaderId, request.user.id);
+    }
+    getBroadcasts() {
+        return this.adminService.getBroadcasts();
+    }
+    createBroadcast(body, request) {
+        return this.adminService.createBroadcast(body, request.user.id);
     }
     getAllApplications(query) {
         const { electionId, positionId, status, county, page, limit } = query;
@@ -344,6 +364,57 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "updateUserRole", null);
+__decorate([
+    (0, common_1.Get)('leaders'),
+    (0, swagger_1.ApiOperation)({ summary: 'List leaders and their positions and contact details' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getLeaders", null);
+__decorate([
+    (0, common_1.Post)('leaders'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a leader directory record' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [leader_dto_1.CreateLeaderDto, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createLeader", null);
+__decorate([
+    (0, common_1.Patch)('leaders/:leaderId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update a leader directory record' }),
+    __param(0, (0, common_1.Param)('leaderId')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, leader_dto_1.UpdateLeaderDto, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateLeader", null);
+__decorate([
+    (0, common_1.Delete)('leaders/:leaderId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete a leader directory record' }),
+    __param(0, (0, common_1.Param)('leaderId')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteLeader", null);
+__decorate([
+    (0, common_1.Get)('broadcasts'),
+    (0, swagger_1.ApiOperation)({ summary: 'List member-wide announcements and memos' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getBroadcasts", null);
+__decorate([
+    (0, common_1.Post)('broadcasts'),
+    (0, swagger_1.ApiOperation)({ summary: 'Send a memo or announcement to all members' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_broadcast_dto_1.CreateBroadcastDto, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createBroadcast", null);
 __decorate([
     (0, common_1.Get)('applications'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all applications with pagination' }),

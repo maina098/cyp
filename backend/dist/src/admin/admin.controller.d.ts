@@ -1,4 +1,6 @@
 import { AdminService } from './admin.service';
+import { CreateLeaderDto, UpdateLeaderDto } from './dto/leader.dto';
+import { CreateBroadcastDto } from './dto/create-broadcast.dto';
 export declare class AdminController {
     private readonly adminService;
     constructor(adminService: AdminService);
@@ -457,6 +459,115 @@ export declare class AdminController {
         email: string;
         name: string;
         role: string;
+    }>;
+    getLeaders(): import("@prisma/client").Prisma.PrismaPromise<({
+        user: {
+            id: string;
+            email: string;
+            name: string;
+            phone: string | null;
+        } | null;
+    } & {
+        id: string;
+        name: string;
+        bio: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        imageUrl: string | null;
+        title: string;
+        userId: string | null;
+        contactEmail: string | null;
+        contactPhone: string | null;
+        sortOrder: number;
+    })[]>;
+    createLeader(body: CreateLeaderDto, request: {
+        user: {
+            id: string;
+        };
+    }): Promise<{
+        user: {
+            id: string;
+            email: string;
+            name: string;
+            phone: string | null;
+        } | null;
+    } & {
+        id: string;
+        name: string;
+        bio: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        imageUrl: string | null;
+        title: string;
+        userId: string | null;
+        contactEmail: string | null;
+        contactPhone: string | null;
+        sortOrder: number;
+    }>;
+    updateLeader(leaderId: string, body: UpdateLeaderDto, request: {
+        user: {
+            id: string;
+        };
+    }): Promise<{
+        user: {
+            id: string;
+            email: string;
+            name: string;
+            phone: string | null;
+        } | null;
+    } & {
+        id: string;
+        name: string;
+        bio: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        imageUrl: string | null;
+        title: string;
+        userId: string | null;
+        contactEmail: string | null;
+        contactPhone: string | null;
+        sortOrder: number;
+    }>;
+    deleteLeader(leaderId: string, request: {
+        user: {
+            id: string;
+        };
+    }): Promise<{
+        success: boolean;
+    }>;
+    getBroadcasts(): import("@prisma/client").Prisma.PrismaPromise<({
+        createdBy: {
+            id: string;
+            email: string;
+            name: string;
+        } | null;
+    } & {
+        id: string;
+        createdAt: Date;
+        title: string;
+        content: string;
+        publishedAt: Date;
+        type: string;
+        createdById: string | null;
+    })[]>;
+    createBroadcast(body: CreateBroadcastDto, request: {
+        user: {
+            id: string;
+        };
+    }): Promise<{
+        createdBy: {
+            id: string;
+            email: string;
+            name: string;
+        } | null;
+    } & {
+        id: string;
+        createdAt: Date;
+        title: string;
+        content: string;
+        publishedAt: Date;
+        type: string;
+        createdById: string | null;
     }>;
     getAllApplications(query: {
         electionId?: string;

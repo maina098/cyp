@@ -40,8 +40,35 @@ let VotesService = VotesService_1 = class VotesService {
                 if (now < election.startsAt || now > election.endsAt) {
                     throw new common_1.ForbiddenException('Outside voting window');
                 }
+                if (!castVoteDto?.sessionId) {
+                    throw new common_1.BadRequestException('Voting session id is required to cast a vote');
+                }
+                const session = await tx.votingSession.findFirst({
+                    where: {
+                        id: castVoteDto.sessionId,
+                        electionId,
+                        userId: voterId,
+                        completedAt: null,
+                    },
+                });
+                if (!session) {
+                    throw new common_1.BadRequestException('Voting session is invalid or already completed');
+                }
+                if (session.expiresAt <= now) {
+                    throw new common_1.BadRequestException('Voting session has expired');
+                }
                 if (!castVoteDto?.positionId) {
                     throw new common_1.BadRequestException('Position id is required to cast a vote');
+                }
+                const position = await tx.electionPosition.findFirst({
+                    where: {
+                        id: castVoteDto.positionId,
+                        electionId,
+                    },
+                    select: { id: true },
+                });
+                if (!position) {
+                    throw new common_1.BadRequestException('Position does not belong to this election');
                 }
                 const candidateFinder = tx.candidate.findFirst ?? tx.candidate.findUnique;
                 const candidate = await candidateFinder.call(tx.candidate, {
@@ -177,24 +204,36 @@ let VotesService = VotesService_1 = class VotesService {
         };
     }
     async createVotingSession(electionId, userId, otpId) {
-        const otp = await this.prisma.voteOtp.findUnique({ where: { id: otpId } });
-        if (!otp || otp.userId !== userId || otp.electionId !== electionId || !otp.verifiedAt) {
-            throw new common_1.BadRequestException('OTP has not been verified for this election');
-        }
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-        const session = await this.prisma.votingSession.create({
-            data: {
-                electionId,
-                userId,
-                otpId,
+        return this.prisma.$transaction(async (tx) => {
+            const otp = await tx.voteOtp.findUnique({ where: { id: otpId } });
+            const now = new Date();
+            if (!otp ||
+                otp.userId !== userId ||
+                otp.electionId !== electionId ||
+                !otp.verifiedAt ||
+                otp.usedAt ||
+                otp.expiresAt <= now) {
+                throw new common_1.BadRequestException('OTP has not been verified or has expired for this election');
+            }
+            const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
+            const session = await tx.votingSession.create({
+                data: {
+                    electionId,
+                    userId,
+                    otpId,
+                    expiresAt,
+                },
+            });
+            await tx.voteOtp.update({
+                where: { id: otpId },
+                data: { usedAt: now },
+            });
+            return {
+                sessionId: session.id,
                 expiresAt,
-            },
+                message: 'Voting session started successfully',
+            };
         });
-        return {
-            sessionId: session.id,
-            expiresAt,
-            message: 'Voting session started successfully',
-        };
     }
     async validateVotingSession(electionId, userId, sessionId) {
         const session = await this.prisma.votingSession.findFirst({

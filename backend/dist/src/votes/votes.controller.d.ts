@@ -1,10 +1,7 @@
 import { VotesService } from './votes.service';
 import { CastVoteDto } from './dto/cast-vote.dto';
 import { ResultsGateway } from '../results/results.gateway';
-declare class VerifyOtpDto {
-    otpId: string;
-    otpCode: string;
-}
+import { CreateVotingSessionDto, VerifyVotingOtpDto } from './dto/voting-session.dto';
 export declare class VotesController {
     private votesService;
     private resultsGateway;
@@ -26,15 +23,13 @@ export declare class VotesController {
         expiresAt: Date;
         message: string;
     }>;
-    verifyVotingOtp(electionId: string, body: VerifyOtpDto, req: any): Promise<{
+    verifyVotingOtp(electionId: string, body: VerifyVotingOtpDto, req: any): Promise<{
         valid: boolean;
         otpId: string;
         expiresAt: Date;
         message: string;
     }>;
-    createVotingSession(electionId: string, body: {
-        otpId: string;
-    }, req: any): Promise<{
+    createVotingSession(electionId: string, body: CreateVotingSessionDto, req: any): Promise<{
         sessionId: string;
         expiresAt: Date;
         message: string;
@@ -65,4 +60,3 @@ export declare class VotesController {
         };
     }>;
 }
-export {};

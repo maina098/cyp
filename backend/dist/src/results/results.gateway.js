@@ -31,6 +31,15 @@ const publicSiteOrigin = 'https://www.coastalyouthparliament.org';
 if (!allowedOrigins.includes(publicSiteOrigin)) {
     allowedOrigins.push(publicSiteOrigin);
 }
+for (const origin of [
+    'https://coastalyouthparliament.co.ke',
+    'https://www.coastalyouthparliament.co.ke',
+    'https://backend.coastalyouthparliament.co.ke',
+]) {
+    if (!allowedOrigins.includes(origin)) {
+        allowedOrigins.push(origin);
+    }
+}
 let ResultsGateway = ResultsGateway_1 = class ResultsGateway {
     jwtService;
     prisma;

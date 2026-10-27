@@ -406,6 +406,91 @@ let AdminService = AdminService_1 = class AdminService {
             select: { id: true, email: true, name: true, role: true },
         });
     }
+    getLeaders() {
+        return this.prisma.leader.findMany({
+            include: {
+                user: { select: { id: true, email: true, phone: true, name: true } },
+            },
+            orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        });
+    }
+    async createLeader(data, actorId) {
+        const leader = await this.prisma.leader.create({
+            data: {
+                ...data,
+                bio: data.bio || null,
+                imageUrl: data.imageUrl || null,
+                contactEmail: data.contactEmail || null,
+                contactPhone: data.contactPhone || null,
+                userId: data.userId || null,
+            },
+            include: { user: { select: { id: true, email: true, phone: true, name: true } } },
+        });
+        await this.auditService.log({
+            userId: actorId,
+            action: 'leader_created',
+            details: `Created leader directory record for ${leader.name} (${leader.title})`,
+        });
+        return leader;
+    }
+    async updateLeader(leaderId, data, actorId) {
+        const existing = await this.prisma.leader.findUnique({ where: { id: leaderId } });
+        if (!existing)
+            throw new common_1.NotFoundException('Leader not found');
+        const leader = await this.prisma.leader.update({
+            where: { id: leaderId },
+            data: {
+                ...data,
+                ...(data.bio !== undefined ? { bio: data.bio || null } : {}),
+                ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl || null } : {}),
+                ...(data.contactEmail !== undefined ? { contactEmail: data.contactEmail || null } : {}),
+                ...(data.contactPhone !== undefined ? { contactPhone: data.contactPhone || null } : {}),
+                ...(data.userId !== undefined ? { userId: data.userId || null } : {}),
+            },
+            include: { user: { select: { id: true, email: true, phone: true, name: true } } },
+        });
+        await this.auditService.log({
+            userId: actorId,
+            action: 'leader_updated',
+            details: `Updated leader directory record for ${leader.name} (${leader.title})`,
+        });
+        return leader;
+    }
+    async deleteLeader(leaderId, actorId) {
+        const leader = await this.prisma.leader.findUnique({ where: { id: leaderId } });
+        if (!leader)
+            throw new common_1.NotFoundException('Leader not found');
+        await this.prisma.leader.delete({ where: { id: leaderId } });
+        await this.auditService.log({
+            userId: actorId,
+            action: 'leader_deleted',
+            details: `Deleted leader directory record for ${leader.name} (${leader.title})`,
+        });
+        return { success: true };
+    }
+    getBroadcasts() {
+        return this.prisma.memberBroadcast.findMany({
+            include: { createdBy: { select: { id: true, name: true, email: true } } },
+            orderBy: { publishedAt: 'desc' },
+        });
+    }
+    async createBroadcast(data, createdById) {
+        const broadcast = await this.prisma.memberBroadcast.create({
+            data: {
+                title: data.title.trim(),
+                content: data.content.trim(),
+                type: data.type,
+                createdById,
+            },
+            include: { createdBy: { select: { id: true, name: true, email: true } } },
+        });
+        await this.auditService.log({
+            userId: createdById,
+            action: `member_${data.type.toLowerCase()}_sent`,
+            details: `Sent "${broadcast.title}" to all members`,
+        });
+        return broadcast;
+    }
     async getAllApplications(filters, pagination) {
         const page = pagination?.page ?? 1;
         const limit = pagination?.limit ?? 50;
